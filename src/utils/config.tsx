@@ -1,8 +1,8 @@
-// export const BASE_URL = "https://work-safety-backend.onrender.com";
-// export const IMAGE_URL = "https://work-safety-backend.onrender.com/static";
+export const BASE_URL = "https://work-safety-backend.onrender.com";
+export const IMAGE_URL = "https://work-safety-backend.onrender.com/static";
 
-export const BASE_URL = "http://localhost:3000";
-export const IMAGE_URL = "http://localhost:3000/static";
+// export const BASE_URL = "http://localhost:3000";
+// export const IMAGE_URL = "http://localhost:3000/static";
 
 
 export const API_PATHS = {
