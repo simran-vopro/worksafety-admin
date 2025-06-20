@@ -111,6 +111,21 @@ export default function QuotationDetailsPage() {
 
     const handleSendQuotation = async () => {
         try {
+
+            // ✅ Check if any product is missing a price or has 0 price
+            const hasInvalidPrice = order?.products?.some(
+                (product) =>
+                    !product.buyPrice || product.buyPrice <= 0 ||
+                    !product.unitPrice || product.unitPrice <= 0
+            );
+            if (hasInvalidPrice) {
+                return setShowError("Cannot send quotation: one or more products are missing prices.");
+            }
+
+            if (!order.subtotal || order.subtotal <= 0) {
+                return setShowError("Failed to send quotation: subtotal must be greater than 0.");
+            }
+
             await sendQuotation();
             setShowSuccess("Quotation Sent Successfully"); // ✅ trigger alert
             refetch();
@@ -144,14 +159,7 @@ export default function QuotationDetailsPage() {
                 />
             )}
 
-            {showError != "" && (
-                <Alert
-                    variant="error"
-                    title={showError}
-                    message={showError}
-                />
-            )}
-
+      
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-1">
                     Quotation Details
@@ -333,6 +341,13 @@ export default function QuotationDetailsPage() {
                     <Button variant="outline" size="sm">Cancel</Button>
                     <Button variant="primary" size="sm" onClick={handleSendQuotation}>Send Quotation</Button>
                 </div>
+            )}
+      {showError != "" && (
+                <Alert
+                    variant="error"
+                    title={showError}
+                    message={showError}
+                />
             )}
 
 

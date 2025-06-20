@@ -9,10 +9,11 @@ interface DataTableProps {
     getRowId?: any;
     onRowClick?: any;
     getRowClassName?: any;
+    rowCount?: number;
+    pagination?: boolean; // ✅ add this
+    paginationMode?: 'client' | 'server'; // ✅ add this
+    loading?: boolean; // optional: already being used
 }
-
-
-
 export default function DataTable({
     rows,
     columns,
@@ -20,53 +21,59 @@ export default function DataTable({
     onPaginationModelChange,
     getRowId,
     onRowClick,
-    getRowClassName
+    getRowClassName,
+    rowCount,
+    // pagination = true,             // ✅ set default
+    paginationMode = "client",     // ✅ set default
+    loading = false                // ✅ set default
 }: DataTableProps) {
-
     return (
-        <Box className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-2">
+        <Box
+            sx={{
+                height: 800,
+                overflowY: "auto",
+                borderRadius: 2,
+                border: "1px solid #e5e7eb",
+                backgroundColor: "white",
+                p: 2,
+            }}
+            className="dark:border-white/[0.05] dark:bg-white/[0.03]"
+        >
             <DataGrid
-                getRowClassName={getRowClassName}
-                onRowClick={onRowClick}
-                getRowId={getRowId}
                 rows={rows}
                 columns={columns}
+                getRowId={getRowId}
+                getRowClassName={getRowClassName}
+                onRowClick={onRowClick}
+                pagination                 // ✅ include
+                paginationMode={paginationMode}                 // ✅ include
+                loading={loading}                               // ✅ include
                 paginationModel={paginationModel}
                 onPaginationModelChange={onPaginationModelChange}
-                pageSizeOptions={[5, 10]}
+                rowCount={rowCount}
+                getRowHeight={() => "auto"}
                 disableRowSelectionOnClick
-                getRowHeight={() => 60}
+                pageSizeOptions={[5, 10, 15, 20]}
                 className="text-sm [&_.MuiDataGrid-columnHeaders]:bg-gray-50 dark:[&_.MuiDataGrid-columnHeaders]:bg-white/[0.03]"
                 sx={{
                     border: "none",
                     backgroundColor: "transparent",
-
                     ".MuiDataGrid-columnHeaderTitle": {
                         fontWeight: 500,
                         fontSize: "12px",
                         color: "#6B7280",
                     },
-
-                    ".MuiDataGrid-columnHeaders": {
-                        backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    },
-
                     ".MuiDataGrid-cell": {
-                        borderBottom: "1px solid rgba(255,255,255,0.1)",
-                        display: "flex",
-                        alignItems: "center",
-                        py: 0,
-                        // color: "white",
+                        borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
+                        alignItems: "flex-start",
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                        lineHeight: 1.5,
+                        py: 1,
                     },
-                    // ".MuiTablePagination-root": {
-                    //     color: "white",
-                    // },
-                    // ".MuiSvgIcon-root": {
-                    //     color: "white",
-                    // },
                 }}
-
             />
         </Box>
     );
 }
+

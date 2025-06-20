@@ -17,10 +17,21 @@ import ManageBrandsPage from "./pages/ManageBrandsPage";
 import AddProductPage from "./pages/AddProductPage";
 import QueriesPage from "./pages/UserQueries";
 import PrivateRoute from "./components/routes/PrivateRoute";
+import EditProductPage from "./pages/EditProduct";
+import { useAuth } from "./hooks/useAuth";
+import { Toaster } from 'react-hot-toast';
+
 
 export default function App() {
+
+
+  const { adminUser, adminToken } = useAuth();
+  console.log("admin credentials", adminToken, adminUser);
+
+
   return (
     <Router basename="/admin/">
+      <Toaster containerStyle={{zIndex:999999999999}} position="top-right" />
       <ScrollToTop />
       <Routes>
         {/* Protected Admin Routes */}
@@ -30,6 +41,7 @@ export default function App() {
             <Route path="/customers" element={<CustomerPage />} />
             <Route path="/products" element={<ProductManagement />} />
             <Route path="/addProduct" element={<AddProductPage />} />
+            <Route path="/editProduct" element={<EditProductPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/quotations" element={<OrdersPage />} />
             <Route path="/quotation-details" element={<QuotationDetailsPage />} />

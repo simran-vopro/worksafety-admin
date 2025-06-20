@@ -13,16 +13,16 @@ interface DecodedToken {
 
 
 const PrivateRoute = () => {
-  const { token } = useAuth();
+  const { adminToken } = useAuth();
 
   const dispatch = useDispatch<AppDispatch>();
 
-  if (!token) return <Navigate to="/signin" />;
+  if (!adminToken) return <Navigate to="/signin" />;
 
   try {
-    const decoded: DecodedToken = jwtDecode(token);
+    const decoded: DecodedToken = jwtDecode(adminToken);
 
-    // Optionally, check token expiry
+    // Optionally, check adminToken expiry
     if (decoded.exp * 1000 < Date.now()) {
       // ✅ Update Redux state
       dispatch(logout());

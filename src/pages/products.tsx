@@ -1,7 +1,7 @@
 import { GridColDef, GridPaginationModel } from "@mui/x-data-grid";
 import { Avatar, Box, IconButton, Switch, Tooltip } from "@mui/material";
 import { Edit2, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Label from "../components/form/Label";
 import Input from "../components/form/input/InputField";
 import Button from "../components/ui/button/Button";
@@ -14,6 +14,7 @@ import { API_PATHS } from "../utils/config";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { useAxios } from "../hooks/useAxios";
+
 
 
 interface Product {
@@ -39,122 +40,32 @@ interface Product {
     isActive: boolean;
 }
 
-
-
-
-// const productData: Product[] = [
-//     {
-//         _id: "1",
-//         Code: "PRD001",
-//         Description: "Sample Product 1",
-//         Pack: 10,
-//         rrp: 100,
-//         GrpSupplier: "Supplier A",
-//         GrpSupplierCode: "SUP-A001",
-//         Manufacturer: "Manu A",
-//         ManufacturerCode: "MANA01",
-//         ISPCCombined: 1,
-//         VATCode: 5,
-//         Brand: "BrandX",
-//         ExtendedCharacterDesc: "Extended Desc 1",
-//         CatalogueCopy: "Copy 1",
-//         ImageRef: "./images/products/prod1.jpg",
-//         Category1: "Category1A",
-//         Category2: "Subcategory1A",
-//         Category3: "Subchild1A",
-//         Style: "Style1",
-//         isActive: true,
-//     },
-//     {
-//         _id: " 2",
-//         Code: "PRD002",
-//         Description: "Sample Product 2",
-//         Pack: 5,
-//         rrp: 250,
-//         GrpSupplier: "Supplier B",
-//         GrpSupplierCode: "SUP-B002",
-//         Manufacturer: "Manu B",
-//         ManufacturerCode: "MANB02",
-//         ISPCCombined: 0,
-//         VATCode: 12,
-//         Brand: "BrandY",
-//         ExtendedCharacterDesc: "Extended Desc 2",
-//         CatalogueCopy: "Copy 2",
-//         ImageRef: "./images/products/prod2.jpg",
-//         Category1: "Category1B",
-//         Category2: "Subcategory1B",
-//         Category3: "Subchild1B",
-//         Style: "Style2",
-//         isActive: false,
-//     },
-//     {
-//         _id: "3",
-//         Code: "PRD003",
-//         Description: "Sample Product 3",
-//         Pack: 20,
-//         rrp: 150,
-//         GrpSupplier: "Supplier C",
-//         GrpSupplierCode: "SUP-C003",
-//         Manufacturer: "Manu C",
-//         ManufacturerCode: "MANC03",
-//         ISPCCombined: 1,
-//         VATCode: 8,
-//         Brand: "BrandZ",
-//         ExtendedCharacterDesc: "Extended Desc 3",
-//         CatalogueCopy: "Copy 3",
-//         ImageRef: "./images/products/prod3.jpg",
-//         Category1: "Category1C",
-//         Category2: "Subcategory1C",
-//         Category3: "Subchild1C",
-//         Style: "Style3",
-//         isActive: true,
-//     },
-//     {
-//         _id: "4",
-//         Code: "PRD004",
-//         Description: "Sample Product 4",
-//         Pack: 8,
-//         rrp: 300,
-//         GrpSupplier: "Supplier D",
-//         GrpSupplierCode: "SUP-D004",
-//         Manufacturer: "Manu D",
-//         ManufacturerCode: "MAND04",
-//         ISPCCombined: 0,
-//         VATCode: 15,
-//         Brand: "BrandX",
-//         ExtendedCharacterDesc: "Extended Desc 4",
-//         CatalogueCopy: "Copy 4",
-//         ImageRef: "./images/products/prod4.jpg",
-//         Category1: "Category1D",
-//         Category2: "Subcategory1D",
-//         Category3: "Subchild1D",
-//         Style: "Style4",
-//         isActive: true,
-//     },
-
-// ];
-
-
 export default function ProductManagement() {
 
+    const navigate = useNavigate();
+    const { adminToken } = useAuth();
 
-    const { data } = useAxios<Product[]>({
-        url: `${API_PATHS.PRODUCTS}`,
-    });
-
-
-    // const orders: Order[] = data || [];
-    const productData: Product[] = data || [];
-
-    console.log("productData", productData)
-
-    const [products, setProducts] = useState(productData);
     const [searchQuery, setSearchQuery] = useState("");
-    // const [filteredProducts, setFilteredProducts] = useState(productData);
+
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
-        pageSize: 5,
+        pageSize: 15,
         page: 0,
     });
+
+    // Build query string for API
+    const query = new URLSearchParams({
+        search: searchQuery,
+        page: (paginationModel.page + 1).toString(), // API uses 1-based indexing
+        limit: paginationModel.pageSize.toString(),
+    }).toString();
+
+    const { data, metaData } = useAxios<Product[]>({
+        url: `${API_PATHS.PRODUCTS}?${query}`,
+    });
+
+
+    const productData: Product[] = data || [];
+
 
     // Modal state
     const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -162,6 +73,8 @@ export default function ProductManagement() {
     const [statusChangeProduct, setStatusChangeProduct] = useState<Product | null>(null);
     const [csvModalOpen, setCsvModalOpen] = useState(false);
 
+
+    // ========================================> handle edit
     // Form state
     const [formData, setFormData] = useState<Omit<Product, "_id" | "isActive">>({
         Code: "",
@@ -184,57 +97,27 @@ export default function ProductManagement() {
         Style: "",
     });
 
-    useEffect(() => {
-        if (!searchQuery) {
-            // setFilteredProducts(products);
-        } else {
-            // const query = searchQuery.toLowerCase();
-            // setFilteredProducts(
-            //     products.filter(
-            //         (p) =>
-            //             p.Code.toLowerCase().includes(query) ||
-            //             p.Description.toLowerCase().includes(query) ||
-            //             p.GrpSupplier.toLowerCase().includes(query) ||
-            //             p.Manufacturer.toLowerCase().includes(query)
-            //     )
-            // );
-        }
-    }, [searchQuery, products]);
-
-    const openEditModal = (product: Product) => {
-        setEditProduct(product);
-        const { isActive, _id, ...rest } = product;
-        setFormData(rest);
-    };
 
     const handleInputChange = (field: keyof typeof formData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
-
     const handleSaveEdit = () => {
         if (!editProduct) return;
-        setProducts((prev) =>
-            prev.map((p) => (p._id === editProduct._id ? { ...p, ...formData } : p))
-        );
         setEditProduct(null);
     };
 
+    // ========================================> handle delete
     const handleDelete = (_id: string) => {
-        setProducts((prev) => prev.filter((p) => p._id !== _id));
         setDeleteProduct(null);
     };
+
+    // ========================================> update visisbility
 
     const handleToggleStatusRequest = (product: Product) => {
         setStatusChangeProduct(product);
     };
-
     const handleConfirmStatusChange = () => {
         if (!statusChangeProduct) return;
-        setProducts((prev) =>
-            prev.map((p) =>
-                p._id === statusChangeProduct._id ? { ...p, isActive: !p.isActive } : p
-            )
-        );
         setStatusChangeProduct(null);
     };
 
@@ -255,23 +138,64 @@ export default function ProductManagement() {
                 sortable: false,
                 filterable: false,
             },
-            { field: "Code", headerName: "Code", width: 120 },
-            { field: "Description", headerName: "Description", width: 180 },
-            { field: "Pack", headerName: "Pack", width: 80, type: "number" },
-            { field: "rrp", headerName: "RRP", width: 100, type: "number" },
-            { field: "GrpSupplier", headerName: "Supplier", width: 150 },
-            { field: "GrpSupplierCode", headerName: "Supplier Code", width: 150 },
-            { field: "Manufacturer", headerName: "Manufacturer", width: 150 },
-            { field: "ManufacturerCode", headerName: "Manufacturer Code", width: 160 },
             { field: "ISPCCombined", headerName: "ISPC", width: 100, type: "number" },
-            { field: "VATCode", headerName: "VAT Code", width: 100, type: "number" },
-            { field: "Brand", headerName: "Brand", width: 120 },
-            { field: "ExtendedCharacterDesc", headerName: "Extended Desc", width: 180 },
-            { field: "CatalogueCopy", headerName: "Catalogue Copy", width: 150 },
-            { field: "Category1", headerName: "Category 1", width: 120 },
-            { field: "Category2", headerName: "Category 2", width: 120 },
-            { field: "Category3", headerName: "Category 3", width: 120 },
+            { field: "Code", headerName: "Code", width: 120 },
             { field: "Style", headerName: "Style", width: 120 },
+            { field: "Description", headerName: "Product", width: 180 },
+            // { field: "Pack", headerName: "Pack", width: 80, type: "number" },
+            // { field: "rrp", headerName: "RRP", width: 100, type: "number" },
+            // { field: "GrpSupplier", headerName: "Supplier", width: 150 },
+            // { field: "GrpSupplierCode", headerName: "Supplier Code", width: 150 },
+            // { field: "Manufacturer", headerName: "Manufacturer", width: 150 },
+            // { field: "ManufacturerCode", headerName: "Manufacturer Code", width: 160 },
+
+            // { field: "VATCode", headerName: "VAT Code", width: 100, type: "number" },
+            {
+                field: "Brand", headerName: "Brand", width: 120, renderCell: (params) => (
+                    <>
+                        {params.row.Brand?.Brand || ""}
+
+                    </>
+                ),
+            },
+
+            {
+                field: "CatalogueCopy", headerName: "Description", width: 350, renderCell: (params) => (
+                    <div
+                        dangerouslySetInnerHTML={{
+                            __html: params.row.CatalogueCopy || "",
+                        }}
+                    />
+                ),
+            },
+            {
+                field: "Category1",
+                headerName: "Category 1",
+                width: 180,
+                renderCell: (params) => (
+                    <>
+                        {params.row.Category1?.Category1 || ""}
+
+                    </>
+                ),
+            },
+            {
+                field: "Category2", headerName: "Category 2", width: 120, renderCell: (params) => (
+                    <>
+                        {params.row.Category2?.Category2 || ""}
+
+                    </>
+                ),
+            },
+            {
+                field: "Category3", headerName: "Category 3", width: 120, renderCell: (params) => (
+                    <>
+                        {params.row.Category3?.Category3 || ""}
+
+                    </>
+                ),
+            },
+
             {
                 field: "isActive",
                 headerName: "Status",
@@ -302,7 +226,8 @@ export default function ProductManagement() {
                             <IconButton
                                 color="primary"
                                 size="small"
-                                onClick={() => openEditModal(params.row)}
+                                onClick={() => navigate("/editProduct", { state: { productId: params.row._id } })}
+
                             >
                                 <Edit2 size={16} />
                             </IconButton>
@@ -325,51 +250,11 @@ export default function ProductManagement() {
             },
 
         ],
-        [products]
+        [productData]
     );
 
-    const navigate = useNavigate();
 
-    // function parseAndAddProducts(csvText: string) {
-    //     // Simple CSV parser, assumes header line matching Product fields
-    //     const lines = csvText.trim().split("\n");
-    //     if (lines.length < 2) return;
-
-    //     const headers = lines[0].split(",").map((h) => h.trim());
-
-    //     const newProducts: Product[] = lines.slice(1).map((line, index) => {
-    //         const values = line.split(",").map((v) => v.trim());
-    //         const productObj: any = {};
-    //         headers.forEach((header, i) => {
-    //             productObj[header] = values[i];
-    //         });
-    //         return {
-    //             _id: products.length + index + 1, // simple _id assignment
-    //             Code: productObj.Code || "",
-    //             Description: productObj.Description || "",
-    //             Pack: Number(productObj.Pack) || 0,
-    //             rrp: Number(productObj.rrp) || 0,
-    //             GrpSupplier: productObj.GrpSupplier || "",
-    //             GrpSupplierCode: productObj.GrpSupplierCode || "",
-    //             Manufacturer: productObj.Manufacturer || "",
-    //             ManufacturerCode: productObj.ManufacturerCode || "",
-    //             ISPCCombined: Number(productObj.ISPCCombined) || 0,
-    //             VATCode: Number(productObj.VATCode) || 0,
-    //             Brand: productObj.Brand || "",
-    //             ExtendedCharacterDesc: productObj.ExtendedCharacterDesc || "",
-    //             CatalogueCopy: productObj.CatalogueCopy || "",
-    //             ImageRef: productObj.ImageRef || "",
-    //             Category1: productObj.Category1 || "",
-    //             Category2: productObj.Category2 || "",
-    //             Category3: productObj.Category3 || "",
-    //             Style: productObj.Style || "",
-    //             isActive: true,
-    //         };
-    //     });
-
-    //     setProducts((prev) => [...prev, ...newProducts]);
-    // }
-
+    // ========================================> upload csv
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
@@ -381,9 +266,6 @@ export default function ProductManagement() {
         if (!file) return;
         setSelectedFile(file);
     };
-
-    const { token } = useAuth();
-
     const handleUpload = async () => {
         if (!selectedFile) return;
 
@@ -396,7 +278,7 @@ export default function ProductManagement() {
 
             const response = await axios.post(API_PATHS.UPLOAD_PRODUCTS_CSV, formData, {
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    Authorization: `Bearer ${adminToken}`,
                     "Content-Type": "multipart/form-data",
                 },
             });
@@ -449,14 +331,18 @@ export default function ProductManagement() {
             </div>
 
 
-            <DataTable
-                getRowId={(row: any) => row._id}
-                rows={productData}
-                columns={productColumns}
-                paginationModel={paginationModel}
-                onPaginationModelChange={setPaginationModel}
-            />
 
+            <DataTable
+                rows={productData || []}
+                rowCount={metaData?.total || 0}
+                pagination
+                paginationMode="server"
+                paginationModel={paginationModel}
+                onPaginationModelChange={(model) => setPaginationModel(model)}
+                loading={loading}
+                columns={productColumns}
+                getRowId={(row: any) => row._id}
+            />
 
 
             {/* Edit Product Modal */}

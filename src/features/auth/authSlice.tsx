@@ -2,21 +2,21 @@ import { AuthState, User } from "../../types/auth";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 
 const initialState: AuthState = {
-    user: null,
-    token: null,
+    adminUser: null,
+    adminToken: null,
 }
 
 const authSlice = createSlice({
     name: "auth",
     initialState,
     reducers: {
-        loginSuccess(state, action: PayloadAction<{ user: User; token: string }>) {
-            state.user = action.payload.user
-            state.token = action.payload.token
+        loginSuccess(state, action: PayloadAction<{ adminUser: User; adminToken: string }>) {
+            state.adminUser = action.payload.adminUser
+            state.adminToken = action.payload.adminToken
         },
         logout(state) {
-            state.user = null
-            state.token = null
+            state.adminUser = null
+            state.adminToken = null
         },
     },
 });

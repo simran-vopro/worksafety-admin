@@ -37,12 +37,11 @@ export default function SignInForm() {
         type: "admin"
       });
 
-      console.log("admin ==> ", res.data)
 
       const { token, user } = res.data.data;
 
       // ✅ Update Redux state
-      dispatch(loginSuccess({ user, token }))
+      dispatch(loginSuccess({ adminUser: user, adminToken: token }))
 
       // Navigate to dashboard or home
       navigate("/");

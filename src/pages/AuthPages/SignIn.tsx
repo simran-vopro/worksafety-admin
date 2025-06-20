@@ -13,12 +13,12 @@ export default function SignIn() {
   }
 
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { adminToken } = useAuth();
 
   useEffect(() => {
-    if (token) {
+    if (adminToken) {
       try {
-        const decoded: DecodedToken = jwtDecode(token);
+        const decoded: DecodedToken = jwtDecode(adminToken);
         if (decoded?.type === "admin") navigate("/");
       } catch { }
     }

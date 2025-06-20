@@ -10,9 +10,9 @@ const api = axios.create({
 });
 
 // api.interceptors.request.use((config) => {
-//   const token = localStorage.getItem("token"); // ✅ safely access here
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
+//   const adminToken = localStorage.getItem("adminToken"); // ✅ safely access here
+//   if (adminToken) {
+//     config.headers.Authorization = `Bearer ${adminToken}`;
 //   }
 //   return config;
 // });

@@ -4,6 +4,7 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,6 +19,7 @@ export default function UserDropdown() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { adminUser } = useAuth();
 
   return (
     <div className="relative">
@@ -25,11 +27,18 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="./images/user/owner.jpg" alt="User" />
+        <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-pink-800 uppercase flex items-center justify-center text-white">
+
+          {adminUser?.firstName[0]} {adminUser?.lastName[0]}
+
+          {/* <img src="./images/user/owner.jpg" alt="User" /> */}
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">Vopro</span>
+        <div>
+          <span className="block mr-2 font-medium text-theme-sm">{adminUser?.firstName} {adminUser?.lastName}</span>
+          <p className="block mr-1 font-medium text-theme-sm text-left">{adminUser?.type}</p>
+        </div>
+
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
             }`}
@@ -56,10 +65,10 @@ export default function UserDropdown() {
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            Vopro Solutions
+            {adminUser?.firstName} {adminUser?.lastName}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
-            admin@vopro.in
+            {adminUser?.email}
           </span>
         </div>
 

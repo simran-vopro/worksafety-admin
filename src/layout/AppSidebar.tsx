@@ -8,7 +8,6 @@ import {
   GridIcon,
   HorizontaLDots,
   ListIcon,
-  PlugInIcon,
   TableIcon,
   UserCircleIcon,
 } from "../icons";
@@ -86,12 +85,6 @@ const othersItems: NavItem[] = [
     name: "Manage Profile",
     path: "/profile",
 
-  },
-
-  {
-    icon: <PlugInIcon />,
-    name: "Authentication",
-    path: "/signin"
   },
 ];
 

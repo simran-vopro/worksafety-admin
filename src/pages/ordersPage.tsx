@@ -48,8 +48,9 @@ export default function OrdersPage({ title, filterStatus }: OrdersPageProps) {
 
     const columns: GridColDef[] = useMemo(
         () => [
+
             { field: "orderId", headerName: "Order ID", width: 140 },
-            { field: "createdAt", headerName: "Order Date", width: 130 },
+            { field: "createdAt", headerName: "Order Date", width: 200 },
             { field: "firstName", headerName: "Customer", width: 140 },
             { field: "email", headerName: "Email", width: 200 },
             { field: "phone", headerName: "Phone", width: 140 },

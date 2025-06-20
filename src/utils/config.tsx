@@ -1,16 +1,15 @@
-export const BASE_URL = "https://work-safety-backend.onrender.com";
-export const IMAGE_URL = "https://work-safety-backend.onrender.com/static";
+// export const BASE_URL = "https://work-safety-backend.onrender.com";
+// export const IMAGE_URL = "https://work-safety-backend.onrender.com/static";
 
-// export const BASE_URL = "http://localhost:3000";
-// export const IMAGE_URL = "http://localhost:3000/static";
-
+export const BASE_URL = "http://192.168.29.181:3000";
+export const IMAGE_URL = "http://192.168.29.181:3000/static";
 
 export const API_PATHS = {
   LOGIN: `${BASE_URL}/api/auth/login`,
 
   CATEGORIES: `${BASE_URL}/api/categories/nested-categories`,
   PRODUCTS: `${BASE_URL}/api/products`,
-  GET_PRODUCTS: `${BASE_URL}/api/get-product`,
+  GET_PRODUCT: `${BASE_URL}/api/products/get-product`,
 
   TOP_BANNERS: `${BASE_URL}/api/banner`,
   GET_FLOATING_BANNER: `${BASE_URL}/api/banner/getFloatingBanner`,
@@ -27,6 +26,13 @@ export const API_PATHS = {
   GET_QUERIES: `${BASE_URL}/api/query/all-user-query`,
 
   UPLOAD_PRODUCTS_CSV : `${BASE_URL}/api/products/upload-csv`,
-  
+
+
+
+  //agents
+  AGENTS : `${BASE_URL}/api/agent`,
+  ADD_AGENT : `${BASE_URL}/api/agent`,
+  DELETE_AGENT : `${BASE_URL}/api/agent`,
+  EDIT_AGENT :  `${BASE_URL}/api/agent`,
 };
 
