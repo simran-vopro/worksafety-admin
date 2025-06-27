@@ -1,18 +1,15 @@
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
-// import DropzoneComponent from "../components/form/form-elements/DropZone";
+import { useEffect, useState } from "react";
 import Button from "../components/ui/button/Button";
 import Input from "../components/form/input/InputField";
 import Label from "../components/form/Label";
 import Select from "../components/form/input/SelectField";
-
-
-interface Variation {
-    type: string;
-    value: string;
-    code: string;
-    image: File | null;
-}
+import { useAxios } from "../hooks/useAxios";
+import { API_PATHS } from "../utils/config";
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+import { useCategoryData } from "../hooks/useCategoryData";
+import { useBrandData } from "../hooks/useBrandData";
+import { useNavigate } from "react-router";
 
 interface ProductFormData {
     Code: string;
@@ -34,11 +31,7 @@ interface ProductFormData {
     Category3: string;
     Style: string;
     isActive: boolean;
-    variations: Variation[];
-
 }
-
-
 
 const emptyProduct: ProductFormData = {
     Code: "",
@@ -60,266 +53,253 @@ const emptyProduct: ProductFormData = {
     Category3: "",
     Style: "",
     isActive: true,
-    variations: [],
 };
 
 const AddProductPage = () => {
-    const [products, setProducts] = useState<ProductFormData[]>([emptyProduct]);
+    const [product, setProduct] = useState<ProductFormData[]>([emptyProduct]);
 
     const handleChange = <K extends keyof ProductFormData>(
         index: number,
         field: K,
         value: ProductFormData[K]
     ) => {
-        const newProducts = [...products];
-        newProducts[index][field] = value;
-        setProducts(newProducts);
+        const newProduct = [...product];
+        newProduct[index][field] = value;
+        setProduct(newProduct);
     };
 
+    const [selectedTopCategory, setSelectedTopCategory] = useState<string | undefined>();
+    const [selectedSubCategory, setSelectedSubCategory] = useState<string | undefined>();
 
-    const addVariation = (productIndex: number) => {
-        const newProducts = [...products];
-        newProducts[productIndex].variations.push({
-            type: "",
-            value: "",
-            code: "",
-            image: null,
-        });
-        setProducts(newProducts);
-    };
+    const {
+        categories,
+        subCategories,
+        subChildCategories,
+    } = useCategoryData(selectedTopCategory, selectedSubCategory);
+    const { brands } = useBrandData();
 
-    const updateVariation = (
-        productIndex: number,
-        variationIndex: number,
-        field: keyof Variation,
-        value: any
-    ) => {
-        const newProducts = [...products];
-        newProducts[productIndex].variations[variationIndex][field] = value;
-        setProducts(newProducts);
-    };
+    useEffect(() => {
+        console.log("product ==> ", product);
+    }, [product])
 
-    const deleteVariation = (productIndex: number, variationIndex: number) => {
-        const newProducts = [...products];
-        newProducts[productIndex].variations.splice(variationIndex, 1);
-        setProducts(newProducts);
-    };
+    const {
+        loading: addLoading,
+        error,
+        refetch: addProductRequest,
+    } = useAxios({
+        url: API_PATHS.ADD_PRODUCT,
+        method: "post",
+        body: product[0],
+        manual: true,
+    });
 
-
-    const handleSubmit = () => {
-        console.log("Submitted Products:", products);
-        // Add your submit logic here
+    const navigate = useNavigate();
+    const handleSubmit = async () => {
+        await addProductRequest();
+        if (!error) {
+            navigate("/products");
+            setProduct([emptyProduct]);
+        }
     };
 
     return (
         <div className="py-6">
-            <h1 className="text-xl font-semibold text-gray-800 dark:text-white mb-5">Add New Product</h1>
+            <h1 className="text-xl font-semibold text-gray-800 dark:text-white mb-5">
+                Add New Product
+            </h1>
 
-            {/* Image Upload */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mb-8">
-                <h2 className="text-xl font-medium mb-4 dark:text-white">Upload Product Images</h2>
-                {/* <DropzoneComponent /> */}
-            </div>
-
-            {/* Variations Table */}
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mb-8">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-medium dark:text-white">Add Product Details</h2>
-
+                    <h2 className="text-xl font-medium dark:text-white">
+                        Add Product Details
+                    </h2>
                 </div>
 
                 <div className="space-y-6">
-                    {products.map((product, index) => (
-                        <div key={index} className="border p-4 rounded-md shadow-sm space-y-6 bg-white dark:bg-gray-900">
-                            {/* Product Details */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                                {([
-                                    { label: "Code", field: "Code" },
-                                    { label: "Description", field: "Description" },
-                                    { label: "Pack", field: "Pack" },
-                                    { label: "RRP", field: "rrp" },
-                                    { label: "Supplier", field: "GrpSupplier" },
-                                    { label: "Supplier Code", field: "GrpSupplierCode" },
-                                    { label: "Manufacturer", field: "Manufacturer" },
-                                    { label: "Manufacturer Code", field: "ManufacturerCode" },
-                                    { label: "VAT", field: "VATCode" },
-                                    { label: "Brand", field: "Brand" },
-                                    { label: "Style", field: "Style" },
-                                ] as { label: string; field: keyof ProductFormData }[]).map(({ label, field }) => (
-                                    <div key={field} className="flex flex-col">
-
-
-                                        <div className="sm:col-span-1">
-                                            <Label>
-                                                {label}<span className="text-error-500">*</span>
-                                            </Label>
-                                            <Input
-                                                type={typeof product[field] === "number" ? "number" : "text"}
-                                                value={String(product[field])}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        index,
-                                                        field,
-                                                        typeof product[field] === "number"
-                                                            ? parseFloat(e.target.value) || 0
-                                                            : e.target.value
-                                                    )
-                                                }
-
-                                                id={label}
-                                                name={label}
-                                                placeholder="Enter your first name"
-                                            />
-                                        </div>
-
-
-
-
-
-                                    </div>
-                                ))}
-
-                            </div>
+                    {product.map((product, index) => (
+                        <div
+                            key={index}
+                            className="border p-4 rounded-md shadow-sm space-y-6 bg-white dark:bg-gray-900"
+                        >
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                                {/* Category1, Category2, Category3 */}
-                                {(["Category1", "Category2", "Category3"] as const).map((catField) => (
-                                    <div key={catField} className="flex flex-col">
-                                        <Label>{catField.replace("Category", "Category ")}</Label>
-                                        <Select
-                                            name={catField}
-                                            value={product[catField]}
-                                            onChange={(e) => handleChange(index, catField, e.target.value)}
-                                            placeholder={`Select ${catField.replace("Category", "Category ")}`}
-                                            options={[
-                                                { label: "Clothing", value: "clothing" },
-                                                { label: "Footwear", value: "footwear" },
-                                                { label: "Accessories", value: "accessories" },
-                                            ]}
-                                        />
-                                    </div>
-                                ))}
+                                <div className="flex flex-col">
+                                    <Label>Category 1</Label>
+                                    <Select
+                                        name="Category1"
+                                        value={product.Category1}
+                                        onChange={(val) => {
+                                            if (typeof val === "string") {
+                                                handleChange(index, "Category1", val);
+                                                setSelectedTopCategory(val);
+                                                handleChange(index, "Category2", "");
+                                                handleChange(index, "Category3", "");
+                                            }
+                                        }}
+                                        placeholder="Select Category 1"
+                                        options={
+                                            categories?.map((cat) => ({
+                                                label: cat.Category1,
+                                                value: cat._id,
+                                            })) || []
+                                        }
+                                        searchable
+                                    />
 
-                                {/* Brand Dropdown */}
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <Label>Category 2</Label>
+
+
+                                    <Select
+                                        name="Category2"
+                                        value={product.Category2}
+                                        onChange={(val) => {
+                                            if (typeof val === "string") {
+                                                handleChange(index, "Category2", val);
+                                                setSelectedSubCategory(val);
+                                                handleChange(index, "Category3", "");
+                                            }
+                                        }}
+                                        placeholder="Select Category 2"
+                                        options={subCategories?.map((cat) => ({
+                                            label: cat.Category2,
+                                            value: cat._id,
+                                        })) || []}
+                                        searchable
+                                    />
+
+
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <Label>Category 2</Label>
+
+                                    <Select
+                                        name="Category3"
+                                        value={product.Category3}
+                                        onChange={(val) => {
+                                            if (typeof val === "string") {
+                                                handleChange(index, "Category3", val);
+
+                                            }
+                                        }}
+
+                                        placeholder="Select Category 3"
+                                        options={subChildCategories?.map((cat) => ({
+                                            label: cat.Category3,
+                                            value: cat._id,
+                                        })) || []}
+                                        searchable
+                                    />
+                                </div>
+
+
                                 <div className="flex flex-col">
                                     <Label>Brand</Label>
+
                                     <Select
                                         name="Brand"
                                         value={product.Brand}
-                                        onChange={(e) => handleChange(index, "Brand", e.target.value)}
+                                        onChange={(val) => {
+                                            if (typeof val === "string") {
+                                                handleChange(index, "Brand", val);
+
+                                            }
+                                        }}
+
+
                                         placeholder="Select Brand"
-                                        options={[
-                                            { label: "Nike", value: "Nike" },
-                                            { label: "Adidas", value: "Adidas" },
-                                            { label: "Puma", value: "Puma" },
-                                        ]}
+                                        options={
+                                            brands?.map((brand) => ({
+                                                label: brand.Brand,
+                                                value: brand._id,
+                                            })) || []
+                                        }
+                                        searchable
                                     />
+
                                 </div>
                             </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-4">
+                                {(
+                                    [
+                                        { label: "Code", field: "Code" },
+                                        { label: "Title", field: "Description" },
+                                        { label: "Pack", field: "Pack" },
+                                        { label: "RRP", field: "rrp" },
+                                        { label: "Supplier", field: "GrpSupplier" },
+                                        { label: "Supplier Code", field: "GrpSupplierCode" },
+                                        { label: "Manufacturer", field: "Manufacturer" },
+                                        { label: "Manufacturer Code", field: "ManufacturerCode" },
+                                        { label: "ISPCCombined", field: "ISPCCombined" },
+                                        { label: "VAT Code", field: "VATCode" },
+                                        { label: "Extended Character Desc", field: "ExtendedCharacterDesc" },
 
-                            {/* Active Toggle */}
-                            <div className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    checked={product.isActive}
-                                    onChange={(e) => handleChange(index, "isActive", e.target.checked)}
-                                />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">Active</span>
-                            </div>
+                                        { label: "Image Ref", field: "ImageRef" },
+                                        { label: "Style", field: "Style" },
+                                        { label: "Description", field: "CatalogueCopy" },
+                                    ] as { label: string; field: keyof ProductFormData }[]
+                                ).map(({ label, field }) => (
+                                    <div key={field}>
 
-                            {/* Variations Section */}
-                            <div className="space-y-4 border-t pt-4">
-                                <div className="flex justify-between">
-                                    <h3 className="text-md font-medium text-gray-800 dark:text-gray-200">Variations</h3>
-                                    <Button variant="outline" size="sm"
+                                        {field === "CatalogueCopy" ? (
+                                            <div className="flex flex-col col-span-full mb-10">
+                                                <Label>
+                                                    {label}
+                                                    <span className="text-error-500">*</span>
+                                                </Label>
+                                                <ReactQuill
+                                                    theme="snow"
+                                                    value={product[field] as string}
+                                                    onChange={(value) => handleChange(index, field, value)}
+                                                    placeholder={`Enter ${label}`}
+                                                    style={{ height: "300px" }} // 👈 adjust height as needed
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div key={field} className="flex flex-col">
+                                                <Label>
+                                                    {label}
+                                                    <span className="text-error-500">*</span>
+                                                </Label>
+                                                <Input
+                                                    type={typeof product[field] === "number" ? "number" : "text"}
+                                                    value={String(product[field])}
+                                                    onChange={(e) =>
+                                                        handleChange(
+                                                            index,
+                                                            field,
+                                                            typeof product[field] === "number"
+                                                                ? parseFloat(e.target.value) || 0
+                                                                : e.target.value
+                                                        )
+                                                    }
+                                                    id={label}
+                                                    name={label}
+                                                    placeholder={`Enter ${label}`}
+                                                />
+                                            </div>
+                                        )}
 
-                                    // onClick={() => setCsvModalOpen(true)}
-
-                                    >
-                                        Upload CSV
-                                    </Button>
-                                </div>
-
-
-                                {product.variations?.map((variation, vIndex) => (
-                                    <div key={vIndex} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                                        {/* Variation Type */}
-                                        <div className="flex flex-col">
-                                            <Label>
-                                                Variation Type<span className="text-error-500">*</span>
-                                            </Label>
-                                            <Input
-                                                value={variation.type}
-                                                onChange={(e) => updateVariation(index, vIndex, "type", e.target.value)}
-                                                type="text"
-                                                placeholder="Enter variation type"
-                                            />
-                                        </div>
-
-                                        {/* Variation Value */}
-                                        <div className="flex flex-col">
-                                            <Label>Variation</Label>
-                                            <Input
-                                                value={variation.value}
-                                                onChange={(e) => updateVariation(index, vIndex, "value", e.target.value)}
-                                                type="text"
-                                                placeholder="Enter variation"
-                                            />
-                                        </div>
-
-                                        {/* Code */}
-                                        <div className="flex flex-col">
-                                            <Label>Code</Label>
-                                            <Input
-                                                value={variation.code}
-                                                onChange={(e) => updateVariation(index, vIndex, "code", e.target.value)}
-                                                type="text"
-                                                placeholder="Enter code"
-                                            />
-                                        </div>
-
-                                        {/* Image Upload */}
-                                        <div className="flex flex-col">
-                                            <Label>Image</Label>
-                                            <Input
-                                                type="file"
-                                                onChange={(e) => updateVariation(index, vIndex, "image", e.target.files?.[0] || null)}
-                                            />
-                                        </div>
-
-                                        {/* Delete Button */}
-                                        <div className="flex items-center mt-4">
-                                            <button
-                                                onClick={() => deleteVariation(index, vIndex)}
-                                                className="text-red-500 hover:text-red-700 text-sm"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
                                     </div>
                                 ))}
-
-
-                                <button
-                                    onClick={() => addVariation(index)}
-                                    className="mt-2 text-blue-600 hover:underline text-sm"
-                                >
-                                    + Add Variation
-                                </button>
                             </div>
+
+
+
+
                         </div>
                     ))}
-
                 </div>
-
             </div>
 
-            {/* Submit Button */}
             <div className="flex justify-end gap-4">
-                <Button onClick={handleSubmit} variant="outline">
+                <Button onClick={() => setProduct([emptyProduct])} variant="outline">
                     Cancel
                 </Button>
-                <Button onClick={handleSubmit} variant="primary">
+                <Button disabled={addLoading ? true : false} onClick={handleSubmit} variant="primary" >
                     Submit Product
                 </Button>
             </div>

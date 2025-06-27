@@ -41,6 +41,7 @@ export interface Customer {
 }
 
 export interface Order {
+    _id?:string;
     orderId: string;
     email: string;
     phone?: string;

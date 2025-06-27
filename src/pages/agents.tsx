@@ -15,7 +15,6 @@ import { useAxios } from "../hooks/useAxios";
 import { API_PATHS } from "../utils/config";
 import toast from "react-hot-toast";
 
-
 const countries = [
     { code: "IN", label: "+91" },
     { code: "US", label: "+1" },
@@ -36,7 +35,6 @@ interface addUserData {
 }
 
 export default function AgentsPage() {
-
     const [searchQuery, setSearchQuery] = useState("");
 
     // Modal states
@@ -45,17 +43,15 @@ export default function AgentsPage() {
     const [statusChangeAgent, setStatusChangeAgent] = useState<User | null>(null);
     const [addAgentModalOpen, setAddAgentModalOpen] = useState(false);
 
-
     const [changePasswordAgent, setChangePasswordAgent] = useState<User | null>(null);
     const [passwordForm, setPasswordForm] = useState({
         password: "",
         confirmPassword: ""
     });
+
     const handlePasswordInputChange = (field: string, value: string) => {
         setPasswordForm(prev => ({ ...prev, [field]: value }));
     };
-
-
 
     // Form state for editing & adding
     const [formData, setFormData] = useState<addUserData>({
@@ -70,9 +66,18 @@ export default function AgentsPage() {
     });
 
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
-        pageSize: 5,
+        pageSize: 20,
         page: 0,
     });
+
+    // Build query string for API
+    const query = new URLSearchParams({
+        search: searchQuery,
+        page: (paginationModel.page + 1).toString(),
+        limit: paginationModel.pageSize.toString(),
+    }).toString();
+
+    
 
     //get all agents
     const {
@@ -82,15 +87,18 @@ export default function AgentsPage() {
         refetch,
         metaData,
     } = useAxios<User[]>({
-        url: API_PATHS.AGENTS,
+        url: `${API_PATHS.AGENTS}?${query}`,
         method: "get",
     });
+
+
+
 
 
     // Add Agent
     const {
         // loading: addLoading,
-        error: addError,
+        // error: addError,
         refetch: addAgentRequest,
     } = useAxios({
         url: API_PATHS.ADD_AGENT,
@@ -142,7 +150,7 @@ export default function AgentsPage() {
     const {
         refetch: statusChangeRequest,
     } = useAxios({
-        url: statusChangeAgent ? `/agents/${statusChangeAgent._id}/status` : "",
+        url: statusChangeAgent ? `${API_PATHS.EDIT_AGENT}/${statusChangeAgent.userId}/status` : "",
         method: "put",
         body: { isActive: !statusChangeAgent?.isActive },
         manual: true,
@@ -181,13 +189,9 @@ export default function AgentsPage() {
             return;
         }
 
-        try {
-            await addAgentRequest();
-            setAddAgentModalOpen(false);
-            refetch(); // refresh agent list
-        } catch (err) {
-            toast.error(addError?.message || "Failed to add agent");
-        }
+        await addAgentRequest();
+        setAddAgentModalOpen(false);
+        refetch(); // refresh agent list
     };
 
     const handleSaveEdit = async () => {
@@ -219,10 +223,12 @@ export default function AgentsPage() {
     };
 
     const handleStatusChange = async () => {
+        if (!statusChangeAgent) return;
+
         try {
-            await statusChangeRequest();
+            await statusChangeRequest(); // uses URL/body from state
             setStatusChangeAgent(null);
-            refetch();
+            refetch(); // refresh table
         } catch (err) {
             alert("Failed to change status");
         }
@@ -325,11 +331,12 @@ export default function AgentsPage() {
                 renderCell: (params) => (
                     <Switch
                         checked={params.value}
-                        // onChange={() => handleToggleStatusRequest(params.row)}
+                        onChange={() => setStatusChangeAgent(params.row)}
                         size="small"
                     />
                 ),
             },
+
             {
                 field: "actions",
                 headerName: "Actions",
@@ -400,14 +407,14 @@ export default function AgentsPage() {
 
             <DataTable
                 rows={agentData || []}
-                getRowId={(row: any) => row._id}
-                columns={columns}
-                paginationModel={paginationModel}
-                onPaginationModelChange={setPaginationModel}
-                loading={loading}
                 rowCount={metaData?.total || 0}
+                pagination
                 paginationMode="server"
-
+                paginationModel={paginationModel}
+                onPaginationModelChange={(model) => setPaginationModel(model)}
+                loading={loading}
+                columns={columns}
+                getRowId={(row: any) => row._id}
             />
 
 
@@ -491,14 +498,15 @@ export default function AgentsPage() {
                 <div className="grid grid-cols-2 gap-6">
 
                     {/* First Name */}
-                    <div>
+                    {/* <div>
                         <Label>Agent Id</Label>
                         <Input
                             value={formData.userId}
                             onChange={(e: any) => handleInputChange("userId", e.target.value)}
                             placeholder="Add unique agent id"
                         />
-                    </div>
+                    </div> */}
+
                     {/* First Name */}
                     <div>
                         <Label>First Name</Label>
@@ -657,6 +665,7 @@ export default function AgentsPage() {
                     </>
                 }
             />
+
 
         </div>
     );

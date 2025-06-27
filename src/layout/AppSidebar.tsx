@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
 import {
-  BoxCubeIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
@@ -12,7 +11,8 @@ import {
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import { Diamond, Users } from "lucide-react";
+import { Diamond, Settings,  User, Users } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 type NavItem = {
   name: string;
@@ -21,76 +21,10 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    path: "/",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "Manage Customers",
-    path: "/customers",
-  },
-  {
-    icon: <GridIcon />,
-    name: "Manage Products",
-    path: "/products",
-  },
-  {
-    name: "Manage Orders",
-    icon: <TableIcon />,
-    subItems: [{ name: "Quote Requests", path: "/quotations" }, { name: "create New Order", path: "/create-order" }, { name: "Received Orders", path: "/received-orders" }],
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "Manage Agents",
-    path: "/agents",
-  },
-
-  // {
-  //   name: "Tables",
-  //   icon: <TableIcon />,
-  //   subItems: [{ name: "create New Order", path: "/basic-tables", pro: false }],
-  // },
-  // {
-  //   name: "Pages",
-  //   icon: <PageIcon />,
-  //   subItems: [
-  //     { name: "Blank Page", path: "/blank", pro: false },
-  //     { name: "404 Error", path: "/error-404", pro: false },
-  //   ],
-  // },
-];
-
-const othersItems: NavItem[] = [
-  {
-    icon: <Users />,
-    name: "User Queries",
-    path: "/queries",
-
-  },
-  {
-    name: "Manage Categories",
-    icon: <ListIcon />,
-    path: "/categories"
-  },
-  {
-    name: "Manage Brands",
-    icon: <Diamond />,
-    path: "/brands"
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "Manage Profile",
-    path: "/profile",
-
-  },
-];
-
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const { adminUser } = useAuth();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -106,6 +40,97 @@ const AppSidebar: React.FC = () => {
     (path: string) => location.pathname === path,
     [location.pathname]
   );
+
+
+
+
+  let navItems: NavItem[] = [
+    {
+      icon: <GridIcon />,
+      name: "Dashboard",
+      path: "/",
+    },
+    {
+      icon: <UserCircleIcon />,
+      name: "Manage Customers",
+      path: "/customers",
+    },
+    {
+      icon: <GridIcon />,
+      name: "Manage Products",
+      path: "/products",
+    },
+    {
+      name: "Manage Orders",
+      icon: <TableIcon />,
+      subItems: [{ name: "Quote Requests", path: "/quotations" }, { name: "create New Order", path: "/create-order" }, { name: "Received Orders", path: "/received-orders" }],
+    },
+    {
+      icon: <UserCircleIcon />,
+      name: "Manage Agents",
+      path: "/agents",
+    },
+
+    // {
+    //   name: "Tables",
+    //   icon: <TableIcon />,
+    //   subItems: [{ name: "create New Order", path: "/basic-tables", pro: false }],
+    // },
+    // {
+    //   name: "Pages",
+    //   icon: <PageIcon />,
+    //   subItems: [
+    //     { name: "Blank Page", path: "/blank", pro: false },
+    //     { name: "404 Error", path: "/error-404", pro: false },
+    //   ],
+    // },
+  ];
+
+  let othersItems: NavItem[] = [
+    {
+      icon: <Settings />,
+      name: "Manage Top Banners",
+      path: "/banners",
+    },
+    {
+      icon: <Settings />,
+      name: "Add Floating Banner",
+      path: "/floatingBanner",
+    },
+    {
+      icon: <Users />,
+      name: "User Queries",
+      path: "/queries",
+
+    },
+    {
+      name: "Manage Categories",
+      icon: <ListIcon />,
+      path: "/categories"
+    },
+    {
+      name: "Manage Brands",
+      icon: <Diamond />,
+      path: "/brands"
+    },
+    {
+      icon: <User />,
+      name: "Manage Profile",
+      path: "/profile",
+
+    },
+  ];
+
+
+  // ✅ Remove specific items if user is an agent
+  if (adminUser?.type === "agent") {
+    const blockedNavNames = ["Manage Agents"];
+    const blockedOthersNames = ["User Queries", "Manage Categories", "Manage Brands"];
+
+    navItems = navItems.filter(item => !blockedNavNames.includes(item.name));
+    othersItems = othersItems.filter(item => !blockedOthersNames.includes(item.name));
+  }
+
 
   useEffect(() => {
     let submenuMatched = false;

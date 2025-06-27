@@ -4,14 +4,32 @@ export interface User {
   userId: string,
   password: string,
   email: string,
+  phone: string,
+  firstName: string,
+  lastName: string,
+  address: string,
+  city: string,
+  company: string,
+  isActive: any
+}
+
+export interface UserQuery {
+  _id: string,
+  type: string,
+  userId: string,
+  password: string,
+  email: string,
   phone: number,
   firstName: string,
   lastName: string,
   address: string,
   city: string,
   company: string,
-  isActive : any
+  message: string,
+  document: string,
+  createdAt: string,
 }
+
 
 
 export interface AuthState {

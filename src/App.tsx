@@ -20,18 +20,18 @@ import PrivateRoute from "./components/routes/PrivateRoute";
 import EditProductPage from "./pages/EditProduct";
 import { useAuth } from "./hooks/useAuth";
 import { Toaster } from 'react-hot-toast';
+import BannersPage from "./pages/banners";
+import FloatingBannerPage from "./pages/floatingBanner";
 
 
 export default function App() {
-
-
   const { adminUser, adminToken } = useAuth();
   console.log("admin credentials", adminToken, adminUser);
 
 
   return (
     <Router basename="/admin/">
-      <Toaster containerStyle={{zIndex:999999999999}} position="top-right" />
+      <Toaster containerStyle={{ zIndex: 999999999999 }} position="top-right" />
       <ScrollToTop />
       <Routes>
         {/* Protected Admin Routes */}
@@ -51,6 +51,8 @@ export default function App() {
             <Route path="/brands" element={<ManageBrandsPage />} />
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/queries" element={<QueriesPage />} />
+            <Route path="/banners" element={<BannersPage />} />
+            <Route path="/floatingBanner" element={<FloatingBannerPage />} />
           </Route>
         </Route>
 

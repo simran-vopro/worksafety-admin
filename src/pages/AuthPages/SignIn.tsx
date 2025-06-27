@@ -19,10 +19,18 @@ export default function SignIn() {
     if (adminToken) {
       try {
         const decoded: DecodedToken = jwtDecode(adminToken);
-        if (decoded?.type === "admin") navigate("/");
-      } catch { }
+        if (decoded?.type === "admin" || decoded?.type === "agent") {
+          navigate("/");
+        }
+      } catch (err) {
+        console.error("JWT decode failed", err);
+      }
     }
-  }, []);
+  }, [adminToken, navigate]);
+
+  // ⛔ Prevent rendering the login page while redirecting
+  if (adminToken) return null;
+
 
   return (
     <>

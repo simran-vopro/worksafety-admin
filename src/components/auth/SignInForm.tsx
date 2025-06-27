@@ -3,22 +3,26 @@ import axios from "axios";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
-import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import { useNavigate } from "react-router";
 import { API_PATHS } from "../../utils/config";
 import { loginSuccess } from "../../features/auth/authSlice";
 import { useDispatch } from "react-redux"
 import { AppDispatch } from "../../app/hooks";
+import toast from "react-hot-toast";
 
 export default function SignInForm() {
+  const [activeTab, setActiveTab] = useState<"admin" | "agent">("admin");
   const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+
+  // useEffect(() => {
+  //   dispatch(logout());
+  // },[])
 
   const handleLogin = async (e: any) => {
     e.preventDefault();
@@ -34,9 +38,8 @@ export default function SignInForm() {
       const res = await axios.post(API_PATHS.LOGIN, {
         userIdOrEmail: userId,
         password,
-        type: "admin"
+        type: activeTab,
       });
-
 
       const { token, user } = res.data.data;
 
@@ -47,7 +50,8 @@ export default function SignInForm() {
       navigate("/");
     } catch (error) {
       console.error("Login error:", error);
-      alert("Login failed");
+      const err = error as any;
+      toast.error(err.response.data.message || "Something Went Wrong")
     } finally {
       setLoading(false);
     }
@@ -66,6 +70,24 @@ export default function SignInForm() {
             </p>
           </div>
           <div>
+
+            {/* Tabs */}
+            <div className="mb-6 flex border-b border-gray-200 dark:border-gray-700">
+              {["admin", "agent"].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab as "admin" | "agent")}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === tab
+                    ? "border-brand-500 text-brand-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  {tab === "admin" ? "Admin" : "Agent"}
+                </button>
+              ))}
+            </div>
+
             <form onSubmit={handleLogin}>
               <div className="space-y-6">
                 <div>
@@ -102,14 +124,14 @@ export default function SignInForm() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Checkbox checked={isChecked} onChange={setIsChecked} />
                     <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
                       Keep me logged in
                     </span>
                   </div>
-                </div>
+                </div> */}
 
                 <div>
                   <Button className="w-full" size="sm" disabled={loading}>

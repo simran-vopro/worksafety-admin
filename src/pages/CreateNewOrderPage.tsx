@@ -1,22 +1,109 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "../components/ui/button/Button";
-import { Customer, Product } from "../types/order";
+import { Product } from "../types/order";
 import { IconButton } from "@mui/material";
 import { GridAddIcon } from "@mui/x-data-grid";
 import { Delete } from "lucide-react";
+import { useAxios } from "../hooks/useAxios";
+import { API_PATHS } from "../utils/config";
+import { useProductList } from "../hooks/useProductList";
+import { useCustomerList } from "../hooks/useCustomerList";
+import { User } from "../types/auth";
+import Select from "../components/form/input/SelectField";
+import { useNavigate } from "react-router";
+import toast from "react-hot-toast";
+
 
 export default function CreateNewOrderPage() {
     const COMMISSION_RATE = 0.175;
 
-    const [customer, setCustomer] = useState<Customer>({
-        id: "cust123",
-        name: "Simran Kaur",
-        email: "simran@example.com",
-        phone: "9876543210",
-        address: "123 Main Street, Mumbai, India",
+    const [customer, setCustomer] = useState<User>({
+        _id: "",
+        type: "",
+        userId: "",
+        password: "",
+        email: "",
+        phone: "",
+        firstName: "",
+        lastName: "",
+        address: "",
+        city: "",
+        company: "",
+        isActive: true
+    });
+
+
+    const [agent, setAgent] = useState<User>({
+        _id: "",
+        type: "",
+        userId: "",
+        password: "",
+        email: "",
+        phone: "",
+        firstName: "",
+        lastName: "",
+        address: "",
+        city: "",
+        company: "",
+        isActive: true
+    });
+
+
+    const { productData } = useProductList();
+
+
+    const { userData } = useCustomerList();
+
+    const {
+        data: agentData,
+    } = useAxios<User[]>({
+        url: `${API_PATHS.AGENTS}`,
+        method: "get",
     });
 
     const [editableProducts, setEditableProducts] = useState<Product[]>([]);
+    const [suggestions, setSuggestions] = useState<Product[]>([]);
+    const [activeRow, setActiveRow] = useState<string | null>(null);
+
+
+    const handleProductSearch = (id: string, field: "code" | "description", value: string) => {
+        handleProductFieldChange(id, field, value);
+
+        if (value.length >= 2) {  // only search if at least 2 characters
+            const filtered = productData.filter((p) => {
+                const searchVal = value.toLowerCase();
+                return (
+                    p.Code?.toLowerCase().includes(searchVal) ||
+                    p.Description?.toLowerCase().includes(searchVal)
+                );
+            });
+            setSuggestions(filtered);
+            setActiveRow(id);
+        } else {
+            setSuggestions([]);
+            setActiveRow(null);
+        }
+    };
+
+    const handleSelectSuggestion = (rowId: string, selectedProduct: Product) => {
+        setEditableProducts((prev) =>
+            prev.map((product) => {
+                if (product._id === rowId) {
+                    return {
+                        ...product,
+                        _id: selectedProduct._id,
+                        productId: selectedProduct._id,
+                        code: selectedProduct.Code,
+                        description: selectedProduct.Description,
+                        image: selectedProduct.ImageRef,
+                    };
+                }
+                return product;
+            })
+        );
+        setSuggestions([]);
+        setActiveRow(null);
+    };
 
     const handleProductFieldChange = (id: string, field: string, value: any) => {
         setEditableProducts((prev) =>
@@ -40,7 +127,8 @@ export default function CreateNewOrderPage() {
         setEditableProducts((prev) => [
             ...prev,
             {
-                _id: `prod_${Date.now()}`,
+                _id: "",
+                productId: "",
                 code: "",
                 description: "",
                 quantity: 1,
@@ -54,26 +142,104 @@ export default function CreateNewOrderPage() {
     };
 
     const calculateSubtotal = () => editableProducts.reduce((sum, p) => sum + (p.totalPrice ?? 0), 0);
-    const [deliveryCharges, setDeliveryCharges] = useState(100);
-    // const [tax, setTax] = useState(20);
+    const [deliveryCharges, setDeliveryCharges] = useState(0);
 
 
     const subtotal = calculateSubtotal();
     const taxAmount = (subtotal * 20) / 100;
     const total = subtotal + taxAmount + deliveryCharges;
 
-    const handleSendOrder = () => {
-        console.log("Order submitted:", { customer, editableProducts });
-        alert("Order submitted successfully!");
+
+    const {
+        refetch: createOrderRequest,
+        loading,
+        // error: createOrderError,
+    } = useAxios({
+        url: API_PATHS.CREATE_ORDER,
+        method: "post",
+        manual: true,
+        body: {
+            agentId: agent.userId,
+            userId: customer.userId,
+
+            email: customer.email,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            address: customer.address,
+            address2: "",
+            phone: customer.phone,
+            city: customer.city,
+            company: customer.company,
+
+            products: editableProducts,
+
+            deliveryCharges,
+            subtotal,
+            tax: taxAmount,
+            total,
+        }
+    });
+
+
+    const navigate = useNavigate()
+    // / clear the default user shape once, for reuse
+    const defaultUser: User = {
+        _id: "",
+        type: "",
+        userId: "",
+        password: "",
+        email: "",
+        phone: "",
+        firstName: "",
+        lastName: "",
+        address: "",
+        city: "",
+        company: "",
+        isActive: true,
     };
 
+    const handleSendOrder = async () => {
+
+
+        if (subtotal <= 0 || taxAmount <= 0 || total <= 0) {
+            toast.error("Subtotal, tax, and total must be greater than zero.");
+            return; // block sending the request
+        }
+
+        try {
+            await createOrderRequest();
+
+            // clear customer
+            setCustomer({ ...defaultUser });
+
+            // clear agent
+            setAgent({ ...defaultUser });
+
+            // clear products
+            setEditableProducts([]);
+
+
+            setEditableProducts([]);
+            // navigate("/");
+        } catch (error) {
+            console.error("Error sending order:", error);
+        }
+    };
+
+
+    const Spinner = () => (
+        <div className="flex justify-center items-center py-20">
+            <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+        </div>
+    );
+    if (loading) return <Spinner />;
+
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 relative">
 
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-3">
                 Create New Order
             </h2>
-
 
 
             {/* Customer Info */}
@@ -81,19 +247,98 @@ export default function CreateNewOrderPage() {
                 <h2 className="text-xl font-medium mb-4">Customer Information</h2>
                 <table className="w-full text-sm text-left border border-gray-200 dark:border-gray-700">
                     <tbody>
-                        {['name', 'email', 'phone', 'address'].map((field) => (
-                            <tr key={field} className="border-b dark:border-gray-700">
-                                <th className="p-2 font-medium bg-gray-50 dark:bg-gray-800 capitalize w-40">{field}</th>
-                                <td className="p-2">
-                                    <input
-                                        type="text"
-                                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                        value={customer[field as keyof Customer]}
-                                        onChange={(e) => setCustomer({ ...customer, [field]: e.target.value })}
-                                    />
-                                </td>
-                            </tr>
+                        {['userId', 'firstName', 'lastName', 'email', 'phone', 'address', 'city', 'company', 'postcode'].map((field) => (
+                            field === 'userId' ? (
+                                <tr key={field} className="border-b dark:border-gray-700">
+                                    <th className="p-2 font-medium bg-gray-50 dark:bg-gray-800 w-40">Select User</th>
+                                    <td className="p-2">
+                                        <Select
+                                            name="userId"
+                                            value={customer.userId}
+                                            onChange={(val) => {
+                                                const selectedUser = userData?.find((user) => user.userId === val);
+                                                if (selectedUser) {
+                                                    setCustomer(selectedUser);
+                                                } else {
+                                                    setCustomer({ ...customer, userId: val });
+                                                }
+                                            }}
+                                            placeholder="Select User"
+                                            options={
+                                                userData?.map((user) => ({
+                                                    label: `${user.firstName} ${user.lastName} (${user.email})`,
+                                                    value: user.userId,
+                                                })) || []
+                                            }
+                                            searchable
+                                        />
+                                    </td>
+                                </tr>
+                            ) : (
+                                <tr key={field} className="border-b dark:border-gray-700">
+                                    <th className="p-2 font-medium bg-gray-50 dark:bg-gray-800 capitalize w-40">{field}</th>
+                                    <td className="p-2">
+                                        <input
+                                            type="text"
+                                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            value={customer[field as keyof User] || ""}
+                                            onChange={(e) => setCustomer({ ...customer, [field]: e.target.value })}
+                                        />
+                                    </td>
+                                </tr>
+                            )
                         ))}
+                    </tbody>
+                </table>
+
+            </div>
+
+            {/* Agent Info */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-6 mb-8">
+                <h2 className="text-xl font-medium mb-4">Agent Information</h2>
+                <table className="w-full text-sm text-left border border-gray-200 dark:border-gray-700">
+                    <tbody>
+                        {["userId", "firstName", "lastName", "email", "phone", "address"].map((field) =>
+                            field === "userId" ? (
+                                <tr key={field} className="border-b dark:border-gray-700">
+                                    <th className="p-2 font-medium bg-gray-50 dark:bg-gray-800 w-40">Select Agent</th>
+                                    <td className="p-2">
+                                        <Select
+                                            name="userId"
+                                            value={agent.userId}
+                                            onChange={(val) => {
+                                                const selectedAgent = agentData?.find((user) => user.userId === val);
+                                                if (selectedAgent) {
+                                                    setAgent(selectedAgent);
+                                                } else {
+                                                    setAgent({ ...agent, userId: val });
+                                                }
+                                            }}
+                                            placeholder="Select Agent"
+                                            options={
+                                                agentData?.map((user) => ({
+                                                    label: `${user.firstName} ${user.lastName} (${user.email})`,
+                                                    value: user.userId,
+                                                })) || []
+                                            }
+                                            searchable
+                                        />
+                                    </td>
+                                </tr>
+                            ) : (
+                                <tr key={field} className="border-b dark:border-gray-700">
+                                    <th className="p-2 font-medium bg-gray-50 dark:bg-gray-800 capitalize w-40">{field}</th>
+                                    <td className="p-2">
+                                        <input
+                                            type="text"
+                                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            value={agent[field as keyof User] || ""}
+                                            onChange={(e) => setAgent({ ...agent, [field]: e.target.value })}
+                                        />
+                                    </td>
+                                </tr>
+                            )
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -137,18 +382,32 @@ export default function CreateNewOrderPage() {
                                 <tr key={product._id} className="border-b dark:border-gray-700">
                                     <td className="p-2 w-30">
                                         <input
-                                            type="text"
                                             className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            type="text"
                                             value={product.code}
-                                            onChange={(e) => handleProductFieldChange(product._id, "code", e.target.value)}
+                                            onChange={(e) => handleProductSearch(product._id, "code", e.target.value)}
                                         />
+                                        {activeRow === product._id && suggestions.length > 0 && (
+                                            <ul className="absolute z-10 bg-white dark:bg-gray-800 border rounded shadow text-sm mt-1 max-h-60 max-w-[500px] overflow-auto w-full">
+                                                {suggestions.map((s) => (
+                                                    <li
+                                                        key={s._id}
+                                                        className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                                                        onClick={() => handleSelectSuggestion(product._id, s)}
+                                                    >
+                                                        {s.Code} - {s.Description}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+
                                     </td>
                                     <td className="p-2 w-80">
                                         <input
                                             type="text"
                                             className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                             value={product.description}
-                                            onChange={(e) => handleProductFieldChange(product._id, "description", e.target.value)}
+                                            onChange={(e) => handleProductSearch(product._id, "description", e.target.value)}
                                         />
                                     </td>
                                     <td className="p-2 w-30">
@@ -204,7 +463,7 @@ export default function CreateNewOrderPage() {
                         <tr className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                             <th className="p-2 w-1/4">Subtotal</th>
                             <th className="p-2 w-1/4">Delivery Charges</th>
-                            <th className="p-2 w-1/4">Tax</th>
+                            <th className="p-2 w-1/4">Tax(20%)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -253,7 +512,7 @@ export default function CreateNewOrderPage() {
 
             <div className="flex justify-start gap-3 mt-4">
                 <Button variant="outline" size="sm">Cancel</Button>
-                <Button variant="primary" size="sm" onClick={handleSendOrder}>Send Quotation</Button>
+                <Button variant="primary" size="sm" disabled={loading} onClick={handleSendOrder}>Send Quotation</Button>
             </div>
         </div>
     );

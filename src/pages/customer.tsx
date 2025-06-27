@@ -1,7 +1,7 @@
-import {  GridColDef, GridPaginationModel } from "@mui/x-data-grid";
-import { Avatar, Box, IconButton, Switch, Tooltip } from "@mui/material";
-import { Edit2, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { GridColDef, GridPaginationModel } from "@mui/x-data-grid";
+import { Box, IconButton, Switch, Tooltip } from "@mui/material";
+import { Edit2, Key, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import Label from "../components/form/Label";
 import Input from "../components/form/input/InputField";
 import Button from "../components/ui/button/Button";
@@ -10,50 +10,12 @@ import { EnvelopeIcon } from "../icons";
 import DataTable from "../components/common/DataTable";
 import ConfirmModal from "../components/common/ConfirmModal";
 import CommonModal from "../components/common/CommonModal";
-
-interface Customer {
-    id: number;
-    avatar: string;
-    name: string;
-    email: string;
-    mobile: string;
-    totalOrders: number;
-    address: string;
-    isActive: boolean;
-}
-
-const customerData: Customer[] = [
-    {
-        id: 1,
-        avatar: "./images/user/user-17.jpg",
-        name: "Amit Patel",
-        email: "amit@example.com",
-        mobile: "+91-9876543210",
-        totalOrders: 15,
-        address: "Ahmedabad, Gujarat",
-        isActive: true,
-    },
-    {
-        id: 2,
-        avatar: "./images/user/user-18.jpg",
-        name: "Sneha Rao",
-        email: "sneha@example.com",
-        mobile: "+91-9123456780",
-        totalOrders: 8,
-        address: "Pune, Maharashtra",
-        isActive: false,
-    },
-    {
-        id: 3,
-        avatar: "./images/user/user-19.jpg",
-        name: "Rahul Singh",
-        email: "rahul@example.com",
-        mobile: "+91-9988776655",
-        totalOrders: 22,
-        address: "Lucknow, UP",
-        isActive: true,
-    },
-];
+import { User } from "../types/auth";
+import { useAxios } from "../hooks/useAxios";
+import { API_PATHS } from "../utils/config";
+import toast from "react-hot-toast";
+import moment from "moment";
+import { useCustomerList } from "../hooks/useCustomerList";
 
 const countries = [
     { code: "IN", label: "+91" },
@@ -63,117 +25,240 @@ const countries = [
     { code: "AU", label: "+61" },
 ];
 
+interface addUserData {
+    userId: string,
+    firstName: string,
+    lastName: string,
+    email: string,
+    phone: string,
+    address: string,
+    password: string,
+    confirmPassword: string,
+}
+
 export default function CustomerPage() {
-    const [customers, setCustomers] = useState(customerData);
     const [searchQuery, setSearchQuery] = useState("");
-    const [filteredCustomers, setFilteredCustomers] = useState(customerData);
+
+    // Modal states
+    const [editAgent, setEditAgent] = useState<User | null>(null);
+    const [deleteAgent, setDeleteAgent] = useState<User | null>(null);
+    const [statusChangeAgent, setStatusChangeAgent] = useState<User | null>(null);
+
+    const [changePasswordAgent, setChangePasswordAgent] = useState<User | null>(null);
+    const [passwordForm, setPasswordForm] = useState({
+        password: "",
+        confirmPassword: ""
+    });
+
+    const handlePasswordInputChange = (field: string, value: string) => {
+        setPasswordForm(prev => ({ ...prev, [field]: value }));
+    };
+
+    // Form state for editing & adding
+    const [formData, setFormData] = useState<addUserData>({
+        userId: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        address: "",
+        password: "",
+        confirmPassword: "",
+    });
+
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
-        pageSize: 5,
+        pageSize: 20,
         page: 0,
     });
 
-    // Modal state
-    const [editUser, setEditUser] = useState<Customer | null>(null);
-    const [deleteUser, setDeleteUser] = useState<Customer | null>(null);
-    const [statusChangeUser, setStatusChangeUser] = useState<Customer | null>(null);
-
-    // Form state for editing
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        mobile: "",
-        address: "",
+    const { userData, refetch, metaData, loading } = useCustomerList({
+        searchQuery,
+        paginationModel,
     });
 
-    // Filter customers whenever searchQuery or customers change
-    useEffect(() => {
-        if (!searchQuery) {
-            setFilteredCustomers(customers);
-        } else {
-            const query = searchQuery.toLowerCase();
-            setFilteredCustomers(
-                customers.filter(
-                    (c) =>
-                        c.name.toLowerCase().includes(query) ||
-                        c.email.toLowerCase().includes(query) ||
-                        c.mobile.toLowerCase().includes(query)
-                )
-            );
-        }
-    }, [searchQuery, customers]);
 
-    // Open edit modal and fill form
-    const openEditModal = (user: Customer) => {
-        setEditUser(user);
+    // Edit User
+    const {
+        // loading: editLoading,
+        // error: editError,
+        refetch: editAgentRequest,
+    } = useAxios({
+        url: editAgent ? `${API_PATHS.EDIT_USER}/${editAgent.userId}` : "",
+        method: "put",
+        body: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+        },
+        manual: true,
+    });
+
+    // Change Password
+    const {
+        refetch: changePasswordRequest,
+        error: editError,
+    } = useAxios({
+        url: changePasswordAgent ? `${API_PATHS.EDIT_USER}/${changePasswordAgent.userId}/password` : "",
+        method: "put",
+        body: { newPassword: passwordForm.password },
+        manual: true,
+    });
+
+
+    // Delete User
+    const {
+        refetch: deleteAgentRequest,
+    } = useAxios({
+        url: deleteAgent ? `${API_PATHS.DELETE_USER}/${deleteAgent.userId}` : "",
+        method: "delete",
+        manual: true,
+    });
+
+    // Change Status
+    const {
+        refetch: statusChangeRequest,
+    } = useAxios({
+        url: statusChangeAgent ? `${API_PATHS.EDIT_USER}/${statusChangeAgent.userId}/status` : "",
+        method: "put",
+        body: { isActive: !statusChangeAgent?.isActive },
+        manual: true,
+    });
+
+
+    const handlePasswordChange = async () => {
+        const { password, confirmPassword } = passwordForm;
+
+        if (!password || !confirmPassword) {
+            toast.error("Both password fields are required");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        try {
+            await changePasswordRequest();
+
+            setChangePasswordAgent(null);
+            refetch();
+
+        } catch (err) {
+            console.error("Password change error:", err);
+            toast.error("Failed to update password");
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editAgent) return;
+
+        if (formData.password !== formData.confirmPassword) {
+            toast.error("Passwords do not match!");
+            return;
+        }
+
+        try {
+            await editAgentRequest();
+
+            setEditAgent(null);
+            refetch();
+        } catch (err) {
+            alert(editError?.message || "Failed to update user");
+        }
+    };
+
+    const handleDeleteAgent = async () => {
+        try {
+            await deleteAgentRequest();
+            setDeleteAgent(null);
+            refetch();
+        } catch (err) {
+            alert("Failed to delete user");
+        }
+    };
+
+    const handleStatusChange = async () => {
+        if (!statusChangeAgent) return;
+
+        try {
+            await statusChangeRequest(); // uses URL/body from state
+            setStatusChangeAgent(null);
+            refetch(); // refresh table
+        } catch (err) {
+            alert("Failed to change status");
+        }
+    };
+
+    // Open edit modal & fill form
+    const openEditModal = (user: User) => {
+        setEditAgent(user);
         setFormData({
-            name: user.name,
+            userId: user.userId,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
-            mobile: user.mobile,
+            phone: String(user.phone),
             address: user.address,
+            password: "",
+            confirmPassword: "",
         });
     };
 
-    // Handle form input changes
+    // Handle form changes
     const handleInputChange = (field: string, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    // Save edited user
-    const handleSaveEdit = () => {
-        if (!editUser) return;
-        setCustomers((prev) =>
-            prev.map((c) =>
-                c.id === editUser.id
-                    ? { ...c, ...formData }
-                    : c
-            )
-        );
-        setEditUser(null);
-    };
-
-    // Delete user
-    const handleDelete = (id: number) => {
-        setCustomers((prev) => prev.filter((c) => c.id !== id));
-        setDeleteUser(null);
-    };
-
-    // Toggle status but confirm first
-    const handleToggleStatusRequest = (user: Customer) => {
-        setStatusChangeUser(user);
-    };
-
-    const handleConfirmStatusChange = () => {
-        if (!statusChangeUser) return;
-        setCustomers((prev) =>
-            prev.map((c) =>
-                c.id === statusChangeUser.id ? { ...c, isActive: !c.isActive } : c
-            )
-        );
-        setStatusChangeUser(null);
-    };
-
-    const customerColumns: GridColDef[] = useMemo(
+    const columns: GridColDef[] = useMemo(
         () => [
             {
                 field: "avatar",
                 headerName: "Avatar",
                 width: 80,
                 renderCell: (params) => (
-                    <Avatar src={params.value} alt="avatar" sx={{ width: 32, height: 32 }} />
+                    <>
+                        <div className="w-[32px] h-[32px] rounded-full bg-pink-200 uppercase flex items-center justify-center">
+                            {params.row.firstName[0]} {params.row.lastName[0]}
+                        </div>
+                    </>
+
                 ),
                 sortable: false,
                 filterable: false,
             },
             {
-                field: "name",
+                field: "createdAt",
+                headerName: "createdAt",
+                flex: 1,
+                renderCell: (params) => (
+                    <div className="text-sm text-gray-800 dark:text-white/90">{moment(params.row.createdAt).format("DD MMM YYYY")}</div>
+                ),
+
+            },
+            {
+                field: "type",
+                headerName: "Type",
+                flex: 0.5,
+            },
+            {
+                field: "userId",
+                headerName: "User Id",
+                flex: 1,
+
+            },
+            {
+                field: "firstName",
                 headerName: "Name",
                 flex: 1,
                 renderCell: (params) => (
-                    <div className="text-sm text-gray-800 dark:text-white/90">{params.value}</div>
+                    <div className="text-sm text-gray-800 dark:text-white/90">{params.row.firstName} {params.row.lastName}</div>
                 ),
             },
             {
-                field: "mobile",
+                field: "phone",
                 headerName: "Mobile",
                 flex: 1,
                 renderCell: (params) => (
@@ -189,17 +274,25 @@ export default function CustomerPage() {
                 ),
             },
             {
-                field: "totalOrders",
-                headerName: "Orders",
-                width: 100,
+                field: "address",
+                headerName: "Address",
+                flex: 1.5,
                 renderCell: (params) => (
                     <span className="text-sm text-gray-700 dark:text-gray-400">{params.value}</span>
                 ),
             },
             {
-                field: "address",
-                headerName: "Address",
+                field: "company",
+                headerName: "Company",
                 flex: 1.5,
+                renderCell: (params) => (
+                    <span className="text-sm text-gray-700 dark:text-gray-400">{params.value}</span>
+                ),
+            },
+            {
+                field: "totalOrders",
+                headerName: "Total Orders",
+                flex: 1,
                 renderCell: (params) => (
                     <span className="text-sm text-gray-700 dark:text-gray-400">{params.value}</span>
                 ),
@@ -211,15 +304,16 @@ export default function CustomerPage() {
                 renderCell: (params) => (
                     <Switch
                         checked={params.value}
-                        onChange={() => handleToggleStatusRequest(params.row)}
+                        onChange={() => setStatusChangeAgent(params.row)}
                         size="small"
                     />
                 ),
             },
+
             {
                 field: "actions",
                 headerName: "Actions",
-                width: 120,
+                width: 160,
                 renderCell: (params) => (
                     <Box display="flex" gap={1}>
                         <Tooltip title="Edit">
@@ -235,9 +329,22 @@ export default function CustomerPage() {
                             <IconButton
                                 color="error"
                                 size="small"
-                                onClick={() => setDeleteUser(params.row)}
+                                onClick={() => setDeleteAgent(params.row)}
                             >
                                 <Trash2 size={16} />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Change Password">
+                            <IconButton
+                                color="secondary"
+                                size="small"
+                                onClick={() => {
+                                    setChangePasswordAgent(params.row);
+                                    setPasswordForm({ password: "", confirmPassword: "" });
+                                }}
+
+                            >
+                                <Key size={16} />
                             </IconButton>
                         </Tooltip>
                     </Box>
@@ -246,21 +353,21 @@ export default function CustomerPage() {
                 filterable: false,
             },
         ],
-        [customers]
+        [userData]
     );
 
     return (
         <div className="space-y-4">
-            {/* Title + Search container */}
+            {/* Title + Search + Add Button */}
             <div className="flex justify-between items-center ">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Manage Customers</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Manage Users</h2>
 
-                <div className="flex justify-end flex-1">
-                    <div className="w-1/2">
+                <div className="flex gap-3 items-center">
+                    <div>
                         <Input
                             name="search"
                             type="search"
-                            placeholder="Search customers..."
+                            placeholder="Search users..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -269,34 +376,41 @@ export default function CustomerPage() {
                 </div>
             </div>
 
+            <DataTable
+                rows={userData || []}
+                rowCount={metaData?.total || 0}
+                pagination
+                paginationMode="server"
+                paginationModel={paginationModel}
+                onPaginationModelChange={(model) => setPaginationModel(model)}
+                loading={loading}
+                columns={columns}
+                getRowId={(row: any) => row._id}
+            />
 
-                <DataTable
-                    rows={filteredCustomers}
-                    columns={customerColumns}
-                    paginationModel={paginationModel}
-                    onPaginationModelChange={setPaginationModel}
-                />
-          
 
             {/* Edit User Modal */}
-            <CommonModal
-                open={!!editUser}
-                onClose={() => setEditUser(null)}
-                title="Edit User"
-                width="medium"
-            >
+            <CommonModal open={!!editAgent} onClose={() => setEditAgent(null)} title="Edit User" width="medium">
                 <div className="space-y-6">
                     {/* Row 1 */}
-                    <div className="flex gap-6">
-                        <div className="w-1/2">
-                            <Label>Name</Label>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div>
+                            <Label>First Name</Label>
                             <Input
-                                value={formData.name}
-                                onChange={(e: any) => handleInputChange("name", e.target.value)}
-                                placeholder="Name"
+                                value={formData.firstName}
+                                onChange={(e: any) => handleInputChange("firstName", e.target.value)}
+                                placeholder="firstName"
                             />
                         </div>
-                        <div className="w-1/2">
+                        <div>
+                            <Label>Last Name</Label>
+                            <Input
+                                value={formData.lastName}
+                                onChange={(e: any) => handleInputChange("lastName", e.target.value)}
+                                placeholder="lastName"
+                            />
+                        </div>
+                        <div>
                             <Label>Email</Label>
                             <div className="relative">
                                 <Input
@@ -311,20 +425,22 @@ export default function CustomerPage() {
                                 </span>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Row 2 */}
-                    <div className="flex gap-6">
-                        <div className="w-1/2">
+                        <div>
                             <Label>Mobile</Label>
                             <PhoneInput
                                 selectPosition="start"
                                 countries={countries}
                                 placeholder="+1 (555) 000-0000"
-                                onChange={(val: any) => handleInputChange("mobile", val)}
+                                onChange={(val: any) => handleInputChange("phone", val)}
+                            // value={formData.phone}
                             />
                         </div>
-                        <div className="w-1/2">
+                    </div>
+
+                    {/* Row 2 */}
+                    <div className="flex gap-6">
+
+                        <div className="w-full">
                             <Label>Address</Label>
                             <Input
                                 value={formData.address}
@@ -334,9 +450,11 @@ export default function CustomerPage() {
                         </div>
                     </div>
 
+
+
                     {/* Buttons */}
                     <div className="flex justify-end gap-3 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => setEditUser(null)}>
+                        <Button variant="outline" size="sm" onClick={() => setEditAgent(null)}>
                             Cancel
                         </Button>
                         <Button variant="primary" size="sm" onClick={handleSaveEdit}>
@@ -346,36 +464,67 @@ export default function CustomerPage() {
                 </div>
             </CommonModal>
 
+            {/* reset password */}
+            <CommonModal
+                open={!!changePasswordAgent}
+                onClose={() => setChangePasswordAgent(null)}
+                title={`Change Password for ${changePasswordAgent?.firstName}`}
+                width="small"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <Label>New Password</Label>
+                        <Input
+                            type="password"
+                            value={passwordForm.password}
+                            onChange={(e) => handlePasswordInputChange("password", e.target.value)}
+                            placeholder="Enter new password"
+                        />
+                    </div>
+                    <div>
+                        <Label>Confirm Password</Label>
+                        <Input
+                            type="password"
+                            value={passwordForm.confirmPassword}
+                            onChange={(e) => handlePasswordInputChange("confirmPassword", e.target.value)}
+                            placeholder="Re-enter new password"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button variant="outline" size="sm" onClick={() => setChangePasswordAgent(null)}>
+                            Cancel
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={handlePasswordChange}>
+                            Save
+                        </Button>
+                    </div>
+                </div>
+            </CommonModal>
 
 
             {/* Confirm Delete Modal */}
             <ConfirmModal
-                open={!!deleteUser}
-                onClose={() => setDeleteUser(null)}
-                onConfirm={() => deleteUser && handleDelete(deleteUser.id)}
+                open={!!deleteAgent}
+                onClose={() => setDeleteAgent(null)}
+                onConfirm={handleDeleteAgent}
                 title="Confirm Delete User"
-                description={`Are you sure you want to delete user ${deleteUser?.name}?`}
+                description={`Are you sure you want to delete user ${deleteAgent?.firstName}?`}
             />
 
-
-
-
-            {/* Confirm Status Change Modal */}
             <ConfirmModal
-                open={!!statusChangeUser}
-                onClose={() => setStatusChangeUser(null)}
-                onConfirm={handleConfirmStatusChange}
+                open={!!statusChangeAgent}
+                onClose={() => setStatusChangeAgent(null)}
+                onConfirm={handleStatusChange}
                 title="Confirm Status Change"
                 description={
                     <>
                         Are you sure you want to{" "}
-                        <strong>{statusChangeUser?.isActive ? "deactivate" : "activate"}</strong> user{" "}
-                        <strong>{statusChangeUser?.name}</strong>?
+                        <strong>{statusChangeAgent?.isActive ? "deactivate" : "activate"}</strong> user{" "}
+                        <strong>{statusChangeAgent?.firstName}</strong>?
                     </>
                 }
             />
-
-
 
 
         </div>

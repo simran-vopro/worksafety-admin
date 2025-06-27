@@ -14,31 +14,10 @@ import { API_PATHS } from "../utils/config";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { useAxios } from "../hooks/useAxios";
-
-
-
-interface Product {
-    _id: string;
-    Code: string;
-    Description: string;
-    Pack: number;
-    rrp: number;
-    GrpSupplier: string;
-    GrpSupplierCode: string;
-    Manufacturer: string;
-    ManufacturerCode: string;
-    ISPCCombined: number;
-    VATCode: number;
-    Brand: string; // For demo, just string name/_id
-    ExtendedCharacterDesc: string;
-    CatalogueCopy: string;
-    ImageRef: string;
-    Category1: string;
-    Category2: string;
-    Category3: string;
-    Style: string;
-    isActive: boolean;
-}
+import UploadingProgress from "../components/ui/UploadingProgress";
+import toast from "react-hot-toast";
+import { Product } from "../types/product";
+import { useProductList } from "../hooks/useProductList";
 
 export default function ProductManagement() {
 
@@ -48,23 +27,15 @@ export default function ProductManagement() {
     const [searchQuery, setSearchQuery] = useState("");
 
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
-        pageSize: 15,
+        pageSize: 50,
         page: 0,
     });
 
-    // Build query string for API
-    const query = new URLSearchParams({
-        search: searchQuery,
-        page: (paginationModel.page + 1).toString(), // API uses 1-based indexing
-        limit: paginationModel.pageSize.toString(),
-    }).toString();
-
-    const { data, metaData } = useAxios<Product[]>({
-        url: `${API_PATHS.PRODUCTS}?${query}`,
+    const { productData, refetch, metaData } = useProductList({
+        searchQuery,
+        paginationModel,
     });
 
-
-    const productData: Product[] = data || [];
 
 
     // Modal state
@@ -107,7 +78,19 @@ export default function ProductManagement() {
     };
 
     // ========================================> handle delete
-    const handleDelete = (_id: string) => {
+
+    const {
+        refetch: deleteProductById,
+    } = useAxios({
+        url: deleteProduct ? `${API_PATHS.PRODUCT_DELETE}/${deleteProduct._id}` : "",
+        method: "delete",
+        manual: true,
+    });
+
+
+    const handleDelete = async () => {
+        await deleteProductById();
+        refetch();
         setDeleteProduct(null);
     };
 
@@ -116,10 +99,33 @@ export default function ProductManagement() {
     const handleToggleStatusRequest = (product: Product) => {
         setStatusChangeProduct(product);
     };
-    const handleConfirmStatusChange = () => {
+
+
+    // Change Status
+    const {
+        refetch: statusChangeRequest,
+    } = useAxios({
+        url: statusChangeProduct ? `${API_PATHS.PRODUCT_VISIBILITY}/${statusChangeProduct._id}` : "",
+        method: "put",
+        body: { isActive: !statusChangeProduct?.isActive },
+        manual: true,
+    });
+
+
+    const handleConfirmStatusChange = async () => {
         if (!statusChangeProduct) return;
-        setStatusChangeProduct(null);
+
+        try {
+            await statusChangeRequest(); // Wait for PUT request to complete
+            refetch();                   // Then refetch product list
+        } catch (error) {
+            console.error("Status change failed:", error);
+            toast.error("Failed to update status");
+        } finally {
+            setStatusChangeProduct(null); // Always close modal
+        }
     };
+
 
     const productColumns: GridColDef[] = useMemo(
         () => [
@@ -142,14 +148,6 @@ export default function ProductManagement() {
             { field: "Code", headerName: "Code", width: 120 },
             { field: "Style", headerName: "Style", width: 120 },
             { field: "Description", headerName: "Product", width: 180 },
-            // { field: "Pack", headerName: "Pack", width: 80, type: "number" },
-            // { field: "rrp", headerName: "RRP", width: 100, type: "number" },
-            // { field: "GrpSupplier", headerName: "Supplier", width: 150 },
-            // { field: "GrpSupplierCode", headerName: "Supplier Code", width: 150 },
-            // { field: "Manufacturer", headerName: "Manufacturer", width: 150 },
-            // { field: "ManufacturerCode", headerName: "Manufacturer Code", width: 160 },
-
-            // { field: "VATCode", headerName: "VAT Code", width: 100, type: "number" },
             {
                 field: "Brand", headerName: "Brand", width: 120, renderCell: (params) => (
                     <>
@@ -158,16 +156,17 @@ export default function ProductManagement() {
                     </>
                 ),
             },
+            // {
+            //     field: "CatalogueCopy", headerName: "Description", width: 350, renderCell: (params) => (
+            //         <div
+            //             style={{
+            //                 paddingLeft: "1rem",
+            //             }}
+            //             dangerouslySetInnerHTML={{ __html: params.row.CatalogueCopy || "" }}
 
-            {
-                field: "CatalogueCopy", headerName: "Description", width: 350, renderCell: (params) => (
-                    <div
-                        dangerouslySetInnerHTML={{
-                            __html: params.row.CatalogueCopy || "",
-                        }}
-                    />
-                ),
-            },
+            //         ></div>
+            //     ),
+            // },
             {
                 field: "Category1",
                 headerName: "Category 1",
@@ -199,13 +198,23 @@ export default function ProductManagement() {
             {
                 field: "isActive",
                 headerName: "Status",
+                align: "center",
+                headerAlign: "center",
                 width: 100,
                 renderCell: (params) => (
-                    <Switch
-                        checked={params.value}
-                        onChange={() => handleToggleStatusRequest(params.row)}
-                        size="small"
-                    />
+                    <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        height="100%"
+                        width="100%"
+                    >
+                        <Switch
+                            checked={params.value}
+                            onChange={() => handleToggleStatusRequest(params.row)}
+                            size="small"
+                        />
+                    </Box>
                 ),
             },
             {
@@ -258,6 +267,8 @@ export default function ProductManagement() {
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     const [error, setError] = useState<string | null>(null);
 
     const handleDrop = (files: File[]) => {
@@ -266,6 +277,7 @@ export default function ProductManagement() {
         if (!file) return;
         setSelectedFile(file);
     };
+
     const handleUpload = async () => {
         if (!selectedFile) return;
 
@@ -275,16 +287,26 @@ export default function ProductManagement() {
         try {
             setLoading(true);
             setError(null);
+            setUploadProgress(0);
 
-            const response = await axios.post(API_PATHS.UPLOAD_PRODUCTS_CSV, formData, {
+
+            await axios.post(API_PATHS.UPLOAD_PRODUCTS_CSV, formData, {
                 headers: {
                     Authorization: `Bearer ${adminToken}`,
                     "Content-Type": "multipart/form-data",
                 },
+                onUploadProgress: (progressEvent) => {
+                    const total = progressEvent.total ?? 1; // fallback to avoid division by zero
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / total);
+                    setUploadProgress(percentCompleted);
+                }
             });
 
-            console.log("Upload response:", response.data);
-            // toast.success("Upload successful");
+            setCsvModalOpen(false);
+            setSelectedFile(null);
+            refetch();
+            toast.success("Upload successful");
+
         } catch (err: any) {
             console.error("Upload failed:", err);
             setError(err.response?.data?.message || "Upload failed");
@@ -293,8 +315,6 @@ export default function ProductManagement() {
             setLoading(false);
         }
     };
-
-
 
     return (
         <div className="space-y-4">
@@ -325,12 +345,8 @@ export default function ProductManagement() {
                     <Button variant="outline" size="sm" onClick={() => setCsvModalOpen(true)}>
                         Upload CSV
                     </Button>
-
-
                 </div>
             </div>
-
-
 
             <DataTable
                 rows={productData || []}
@@ -527,9 +543,9 @@ export default function ProductManagement() {
                 title="Upload Products CSV"
                 width="small"
             >
-                <DropzoneComponent onDrop={handleDrop} />
 
-                {loading && <p className="text-sm text-blue-500 mt-2">Uploading...</p>}
+
+                {loading ? <UploadingProgress percentage={uploadProgress} /> : <DropzoneComponent previewFile={selectedFile} onDrop={handleDrop} helperText="Only .csv, .xls, or .xlsx files are supported" />}
                 {error && <p className="text-sm text-red-500 mt-2">Upload failed: {error}</p>}
 
                 <Button onClick={handleUpload} disabled={loading || !selectedFile}>
@@ -541,7 +557,7 @@ export default function ProductManagement() {
             <ConfirmModal
                 open={!!deleteProduct}
                 onClose={() => setDeleteProduct(null)}
-                onConfirm={() => deleteProduct && handleDelete(deleteProduct._id)}
+                onConfirm={() => deleteProduct && handleDelete()}
                 title="Confirm Delete Product"
                 description={`Are you sure you want to delete product ${deleteProduct?.Code}?`}
             />

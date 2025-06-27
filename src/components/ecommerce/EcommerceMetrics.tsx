@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router";
+import { useProductList } from "../../hooks/useProductList";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -5,8 +7,32 @@ import {
   GroupIcon,
 } from "../../icons";
 import Badge from "../ui/badge/Badge";
+import { useAxios } from "../../hooks/useAxios";
+import { API_PATHS } from "../../utils/config";
 
 export default function EcommerceMetrics() {
+  const navigate = useNavigate();
+  // const { metaData: productMetaData, loading: productLoading } = useProductList();
+  //get all agents
+  const {
+    data: productMetaData,
+  } = useAxios<number>({
+    url: API_PATHS.PRODUCTS_COUNT,
+    method: "get",
+  });
+
+
+  //get all agents
+  const {
+    data: userCount,
+  } = useAxios<number>({
+    url: API_PATHS.USERS_COUNT,
+    method: "get",
+  });
+
+
+
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
       {/* <!-- Metric Item Start --> */}
@@ -20,14 +46,20 @@ export default function EcommerceMetrics() {
             <span className="text-sm text-gray-500 dark:text-gray-400">
               Customers
             </span>
+
+
+
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              3,782
+              {userCount}
             </h4>
           </div>
-          <Badge color="success">
-            <ArrowUpIcon />
-            View
-          </Badge>
+
+
+          <div onClick={() => navigate("/customers")} className="cursor-pointer">
+            <Badge color="success">
+              <ArrowUpIcon />
+              View
+            </Badge>      </div>
         </div>
       </div>
       {/* <!-- Metric Item End --> */}
@@ -42,15 +74,22 @@ export default function EcommerceMetrics() {
             <span className="text-sm text-gray-500 dark:text-gray-400">
               Products
             </span>
+
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              20,021
+              {productMetaData}
             </h4>
+
+
           </div>
 
-          <Badge color="error">
-            <ArrowDownIcon />
-           View
-          </Badge>
+          <div onClick={() => navigate("/products")} className="cursor-pointer">
+            <Badge color="error">
+              <ArrowDownIcon />
+              View
+            </Badge>
+          </div>
+
+
         </div>
       </div>
       {/* <!-- Metric Item End --> */}

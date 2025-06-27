@@ -1,139 +1,235 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Frown, Pencil, X } from "lucide-react";
-import ImageDropzone from "../components/form/form-elements/ImageDropZone";
 import Button from "../components/ui/button/Button";
+import { useAxios } from "../hooks/useAxios";
+import { API_PATHS, IMAGE_URL } from "../utils/config";
+import { useAuth } from "../hooks/useAuth";
+import toast from "react-hot-toast";
+import DropzoneComponent from "../components/form/form-elements/DropZone";
+import ConfirmModal from "../components/common/ConfirmModal";
+import { Switch } from "@mui/material";
+import { useCategoryData } from "../hooks/useCategoryData";
 
 interface Category {
-    name: string;
+    _id: string;
     image?: string;
+    "Image Ref"?: string;
+    Category1?: string;
+    Category2?: string;
+    Category3?: string;
+    top?: boolean
+}
+
+export interface CategoryType {
+    _id: string;
+    Category1: string;
+    icon: string;
+    image: string;
+    Categories2: {
+        _id: string;
+        label: string;
+        Categories3: {
+            _id: string;
+            Category3: string;
+        }[];
+    }[];
+    allCategories3: {
+        _id: string;
+        Category3: string;
+    }[];
 }
 
 interface CategoryColumnProps {
     title: string;
-    categories: Category[];
+    categories: Category[] | null;
     selectedParent?: string;
-    onSelect?: (category: string) => void;
-    onAdd?: (category: Category) => void;
-    onEdit?: (oldCat: string, newCat: Category) => void;
-    onDelete?: (cat: string) => void;
+    categoryType?: string;
+    onSelect?: (cat: { _id: string, Category: string }) => void;
+    onAdd?: () => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
+    onMark?: () => void;
+    selectedFile?: any;
+    setSelectedFile?: any;
+    categoryName?: string;
+    setCategoryName?: (name: string) => void;
+    top?: boolean;
+    setTop?: (name: boolean) => void;
 }
 
 const CategoryColumn = ({
     title,
     categories,
+    categoryType,
     selectedParent,
     onSelect,
     onAdd,
-    onEdit,
+    onMark,
     onDelete,
+    selectedFile,
+    setSelectedFile,
+    categoryName,
+    setCategoryName,
+    onEdit,
+    setTop
 }: CategoryColumnProps) => {
-    const [inputValue, setInputValue] = useState("");
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+
     const [editIndex, setEditIndex] = useState<number | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [editingOldName, setEditingOldName] = useState<string | null>(null); // for tracking original name
+    const [deleteCategory, setDeleteCategory] = useState<any | null>(null); // the category to delete
+    const [markTopCategory, setMarkTopCategory] = useState<any | null>(null);
 
     const isEditing = editIndex !== null;
 
-    const handleAddOrEdit = () => {
-        if (!inputValue.trim()) return;
-        if (!imagePreview && !isEditing) {
-            setError("Please select an image first.");
-            return;
+
+    const handleDrop = (files: File[]) => {
+        if (files.length > 0) {
+            setSelectedFile(files[0]); // ✅ Real browser File
         }
-
-        const category: Category = {
-            name: inputValue.trim(),
-            image: imagePreview || undefined,
-        };
-
-        if (isEditing && editingOldName) {
-            onEdit?.(editingOldName, category);
-        } else {
-            onAdd?.(category);
-        }
-
-        // Reset fields
-        setInputValue("");
-        setImagePreview(null);
-        setEditIndex(null);
-        setEditingOldName(null);
-        setError(null);
     };
 
     return (
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 w-full">
-            <h2 className="text-lg font-semibold mb-4">{title}</h2>
 
-            {selectedParent && (
-                <div className="text-center text-sm text-gray-600 dark:text-gray-300 mb-4">
-                    Add under: <span className="font-semibold text-brand-600">{selectedParent}</span>
-                </div>
-            )}
+            <div className="flex items-center justify-between">
 
+                <h2 className="text-lg font-semibold mb-4">{title}</h2>
+
+                {selectedParent && (
+                    <div className="text-center text-[17px] text-gray-600 dark:text-gray-300 mb-4">
+                        <span className="font-semibold text-orange-600">{selectedParent}</span>
+                    </div>
+                )}
+            </div>
 
             <div className="flex items-center justify-center mb-2">
                 <input
                     type="text"
                     placeholder={`Add ${title}`}
                     className="w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 mr-2"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    value={categoryName || ""}
+                    onChange={(e) => setCategoryName?.(e.target.value)}
                 />
-                <Button
-                    onClick={handleAddOrEdit}
-                    size="sm"
 
-                >
+
+                <Button onClick={() => { isEditing ? onEdit?.() : onAdd?.() }} size="sm">
                     {isEditing ? "Edit" : "Add"}
                 </Button>
 
             </div>
 
-            <ImageDropzone
-                onImageSelect={(img) => {
-                    setImagePreview(img);
-                    setError(null);
-                }}
-            />
-
-            {error && <p className="text-red-500 text-sm my-2">{error}</p>}
-
+            {
+                categoryType != "child" && <DropzoneComponent
+                    onDrop={handleDrop}
+                    accept={{
+                        "image/*": [".jpg", ".jpeg", ".png"],
+                    }}
+                    label="Upload Category Image"
+                    helperText="Only .jpg, .jpeg, or .png files are supported"
+                    previewFile={selectedFile}
+                />
+            }
 
 
             <div className="space-y-3 mt-4 pt-4 border-t">
                 <p className="text-sm mb-4">Added Categories</p>
-                {categories.length > 0 ? categories.map((cat, i) => (
+                {categories && categories.length > 0 ? categories.map((cat, i) => (
                     <div
                         key={i}
                         className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition"
                     >
                         <div
                             className="flex items-center gap-3 flex-1 cursor-pointer"
-                            onClick={() => (editIndex === i ? null : onSelect?.(cat.name))}
+                            onClick={
+                                categoryType !== 'child'
+                                    ? () => {
+                                        if (editIndex === i) return;
+                                        onSelect?.({
+                                            _id: cat._id,
+                                            Category: (categoryType === "top" ? cat.Category1 : categoryType === "sub" ? cat.Category2 : cat.Category3) || ""
+                                        })
+                                    }
+                                    : undefined
+                            }
                         >
-                            <img
-                                src={cat.image || "./images/cards/card-01.jpg"}
-                                alt="Category"
-                                className="rounded-full w-10 h-10 object-cover"
-                            />
-                            <span className="font-medium text-gray-800 dark:text-white">{cat.name}</span>
+                            <div className="w-12 h-12 shrink-0 rounded-full overflow-hidden border border-gray-300 dark:border-gray-600">
+
+                                {
+                                    categoryType === "child" ? <div className="w-full h-full object-cover bg-pink-300 flex items-center justify-center uppercase text-xl">{cat.Category3 ? cat.Category3[0] : ""} </div> :
+                                        <img
+                                            src={cat.image?.startsWith("http")
+                                                ? cat.image
+                                                : `${IMAGE_URL}/${cat.image}`}
+                                            alt="Category"
+                                            className="w-full h-full object-cover"
+                                        />
+                                }
+
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-medium text-gray-800 dark:text-white">
+                                    {categoryType === "top" ? cat.Category1 : categoryType === "sub" ? cat.Category2 : cat.Category3}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                                    {categoryType === "top" ? "Top Category" : categoryType === "sub" ? "Sub Category" : "Child Category"}
+                                </span>
+                            </div>
                         </div>
+
                         <div className="flex items-center gap-2 ml-2">
+                            {
+                                categoryType == "top" && <div className="flex items-center">
+                                    <p className="text-[10px] text-center">Mark Top: </p>
+                                    <Switch
+                                        checked={cat.top}
+                                        onChange={() => {
+                                            onSelect?.({
+                                                _id: cat._id,
+                                                Category: (categoryType === "top" ? cat.Category1 : categoryType === "sub" ? cat.Category2 : cat.Category3) || ""
+                                            })
+                                            setMarkTopCategory({
+                                                ...cat, // Pass the full category including top value
+                                                Category: cat.Category1 || cat.Category2 || cat.Category3 // for description
+                                            });
+                                        }}
+                                        size="small"
+                                    />
+                                </div>
+                            }
+
+
                             <Pencil
                                 size={16}
                                 className="text-gray-500 hover:text-blue-600 cursor-pointer"
                                 onClick={() => {
+                                    onSelect?.({
+                                        _id: cat._id,
+                                        Category: (categoryType === "top" ? cat.Category1 : categoryType === "sub" ? cat.Category2 : cat.Category3) || ""
+                                    });
                                     setEditIndex(i);
-                                    setInputValue(cat.name);
-                                    setImagePreview(cat.image || null);
-                                    setEditingOldName(cat.name);
+                                    setCategoryName?.(
+                                        categoryType === "top"
+                                            ? cat.Category1 ?? ""
+                                            : categoryType === "sub"
+                                                ? cat.Category2 ?? ""
+                                                : cat.Category3 ?? ""
+                                    );
+
+                                    setSelectedFile(cat.image || (IMAGE_URL + "/" + cat.image))
+                                    // setImagePreview(cat.image || null);
+                                    // setEditingOldName(cat.name);
                                 }}
                             />
                             <X
                                 size={16}
-                                className="text-red-500 hover:text-red-700 cursor-pointer"
-                                onClick={() => onDelete?.(cat.name)}
+                                className="text-red-500 hover:text-red-700 cursor-pointer w-6 h-6 p-1 bg-amber-200 rounded-full"
+                                onClick={() => {
+                                    onSelect?.({
+                                        _id: cat._id,
+                                        Category: (categoryType === "top" ? cat.Category1 : categoryType === "sub" ? cat.Category2 : cat.Category3) || ""
+                                    });
+                                    setDeleteCategory(cat);
+                                }}
                             />
                         </div>
                     </div>
@@ -142,6 +238,33 @@ const CategoryColumn = ({
                     <h2 className="text-sm font-semibold text-gray-700">No Categories Available</h2>
                     <p className="text-sm text-gray-500 mt-1">Add a category to begin organizing.</p>
                 </div>}
+
+
+                {/* Confirm Delete Modal */}
+                <ConfirmModal
+                    open={!!deleteCategory}
+                    onClose={() => setDeleteCategory(null)}
+                    onConfirm={() => {
+                        onDelete?.();
+                        setDeleteCategory(null);
+                    }}
+                    title="Confirm Delete Agent"
+                    description={`Are you sure you want to delete ${categoryName}?`}
+                />
+
+                <ConfirmModal
+                    open={!!markTopCategory}
+                    onClose={() => setMarkTopCategory(null)}
+                    onConfirm={() => {
+                        // Toggle the value — don't just set it to true
+                        setTop?.(!markTopCategory?.top);
+                        onMark?.(); // This should trigger the actual update (e.g., calling markTop())
+                        setMarkTopCategory(null);
+                    }}
+                    title={`Confirm ${markTopCategory?.top ? 'Unmark' : 'Mark'} Top Category`}
+                    description={`Are you sure you want to ${markTopCategory?.top ? 'remove' : 'mark'} "${markTopCategory?.Category1}" as a top category?`}
+                />
+
             </div>
         </div>
     );
@@ -149,120 +272,364 @@ const CategoryColumn = ({
 
 
 export default function ManageCategoriesPage() {
-    const [selectedTopCategory, setSelectedTopCategory] = useState<string | null>(null);
-    const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+    const { adminToken } = useAuth();
+    const [selectedTopCategory, setSelectedTopCategory] = useState<{ _id: string, Category: string } | null>(null);
+    const [selectedSubCategory, setSelectedSubCategory] = useState<{ _id: string, Category: string } | null>(null);
+    const [selectedSubChildCategory, setSelectedSubChildCategory] = useState<{ _id: string, Category: string } | null>(null);
 
-    const [topCategories, setTopCategories] = useState<Category[]>([]);
-    const [subCategories, setSubCategories] = useState<Record<string, Category[]>>({});
-    const [subSubCategories, setSubSubCategories] = useState<Record<string, Category[]>>({});
+    const {
+        categories,
+        subCategories,
+        subChildCategories,
+        // loadingCategories,
+        // loadingSubCategories,
+        // loadingSubChildCategories,
+        refetch,
+        subCategoriesRefetch,
+        subChildCategoriesRefetch,
+    } = useCategoryData(selectedTopCategory?._id, selectedSubCategory?._id);
 
-    const handleAddTop = (cat: Category) => {
-        if (!topCategories.find((c) => c.name === cat.name)) {
-            setTopCategories([...topCategories, cat]);
+    const [top, setTop] = useState(false);
+
+    const [selectedFiles, setSelectedFiles] = useState<{
+        top: File | null;
+        sub: File | null;
+        child: File | null;
+    }>({
+        top: null,
+        sub: null,
+        child: null,
+    });
+
+
+    const getSelectedFile = (type: 'top' | 'sub' | 'child') => selectedFiles[type];
+
+    const setFileForType = (type: 'top' | 'sub' | 'child', file: File | null) => {
+        setSelectedFiles((prev) => ({
+            ...prev,
+            [type]: file,
+        }));
+    };
+
+    const [topCategoryName, setTopCategoryName] = useState<string>("");
+    const [subCategoryName, setSubCategoryName] = useState<string>("");
+    const [subChildCategoryName, setSubChildCategoryName] = useState<string>("");
+
+    // //get all users
+    // const {
+    //     data: categories,
+    //     refetch,
+    // } = useAxios<CategoryType[]>({
+    //     url: `${API_PATHS.CATEGORIES}`,
+    //     method: "get",
+    // });
+
+    // //get all sub categories
+    // const {
+    //     data: subCategories,
+    //     refetch: subCategoriesRefetch,
+    // } = useAxios<CategoryType[]>({
+    //     url: selectedTopCategory ? `${API_PATHS.SUB_CATEGORIES}?Category1=${selectedTopCategory?._id}` : API_PATHS.SUB_CATEGORIES,
+    //     method: "get",
+    // });
+
+    // //get all sub chils categories
+    // const {
+    //     data: subChildCategories,
+    //     refetch: subChildCategoriesRefetch,
+    // } = useAxios<CategoryType[]>({
+    //     url: selectedSubCategory ? `${API_PATHS.SUB_CHILD_CATEGORIES}?Category2=${selectedSubCategory?._id}` : API_PATHS.SUB_CHILD_CATEGORIES,
+    //     method: "get",
+    // });
+
+    // ADD_CATEGORY
+    const {
+        refetch: addTopCategory,
+    } = useAxios({
+        url: API_PATHS.ADD_CATEGORY,
+        method: "post",
+        manual: true, // very important
+        config: {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+            Authorization: adminToken ? `Bearer ${adminToken}` : "",
         }
-    };
+    });
 
-    const handleAddSub = (cat: Category) => {
-        if (!selectedTopCategory) return;
-        const list = subCategories[selectedTopCategory] || [];
-        if (!list.find((c) => c.name === cat.name)) {
-            setSubCategories({
-                ...subCategories,
-                [selectedTopCategory]: [...list, cat],
-            });
+    // ADD_SUB_CATEGORY
+    const {
+        refetch: addSubCategory,
+    } = useAxios({
+        url: API_PATHS.ADD_SUB_CATEGORY,
+        method: "post",
+        manual: true, // very important
+        config: {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+            Authorization: adminToken ? `Bearer ${adminToken}` : "",
         }
-    };
+    });
 
-    const handleAddSubSub = (cat: Category) => {
-        if (!selectedSubCategory) return;
-        const list = subSubCategories[selectedSubCategory] || [];
-        if (!list.find((c) => c.name === cat.name)) {
-            setSubSubCategories({
-                ...subSubCategories,
-                [selectedSubCategory]: [...list, cat],
-            });
+    // ADD_SUB_CHILD_CATEGORY
+    const {
+        refetch: addSubChildCategory,
+    } = useAxios({
+        url: API_PATHS.ADD_SUB_CHILD_CATEGORY,
+        method: "post",
+        body: {
+            Category1: selectedTopCategory && selectedTopCategory!._id,
+            Category2: selectedSubCategory && selectedSubCategory!._id,
+            Category3: subChildCategoryName
+        },
+        manual: true,
+    });
+
+
+    // EDIT_CATEGORY
+    const {
+        refetch: editTopCategory,
+    } = useAxios({
+        url: selectedTopCategory ? `${API_PATHS.ADD_CATEGORY}/${selectedTopCategory._id}` : "",
+        method: "put",
+        manual: true, // very important
+        config: {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+            Authorization: adminToken ? `Bearer ${adminToken}` : "",
         }
+    });
+
+    // ADD_EDIT_CATEGORY
+    const {
+        refetch: editSubCategory,
+    } = useAxios({
+        url: selectedSubCategory ? `${API_PATHS.ADD_SUB_CATEGORY}/${selectedSubCategory._id}` : "",
+        method: "put",
+        manual: true, // very important
+        config: {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+            Authorization: adminToken ? `Bearer ${adminToken}` : "",
+        }
+    });
+
+    // EDIT_SUB_CHILD_CATEGORY
+    const {
+        refetch: editSubChildCategory,
+    } = useAxios({
+        url: selectedSubChildCategory ? `${API_PATHS.ADD_SUB_CHILD_CATEGORY}/${selectedSubChildCategory._id}` : "",
+        method: "put",
+        body: {
+            Category3: subChildCategoryName
+        },
+        manual: true,
+    });
+
+
+    const {
+        refetch: markTopCategory,
+    } = useAxios({
+        url: selectedTopCategory ? `${API_PATHS.MARK_TOP}/${selectedTopCategory!._id}/top` : "",
+        method: "put",
+        body: {
+            top: top
+        },
+        manual: true,
+    });
+
+    const markTop = async () => {
+        await markTopCategory();
+        refetch();
+    }
+
+    const handleAddTop = async () => {
+        const file = selectedFiles["top"];
+        if (!topCategoryName || !file) {
+            toast.error("Category Name and image are required");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("Category1", topCategoryName);
+        formData.append("image", file);
+
+        await addTopCategory({ body: formData });
+        setTopCategoryName("");
+        setFileForType("top", null);
+        refetch();
     };
 
-    const handleEditTop = (oldCat: string, newCat: Category) => {
-        setTopCategories((prev) => prev.map((c) => c.name === oldCat ? newCat : c));
-        setSubCategories((prev) => {
-            const updated = { ...prev };
-            if (updated[oldCat]) {
-                updated[newCat.name] = updated[oldCat];
-                delete updated[oldCat];
-            }
-            return updated;
-        });
+    const handleAddSub = async () => {
+        const file = selectedFiles["sub"];
+        if (!subCategoryName || !file) {
+            toast.error("Sub Category Name and image are required");
+            return;
+        }
+
+        if (!selectedTopCategory) {
+            toast.error("Please Select Top category first")
+        }
+
+        const formDataToSend = new FormData();
+        formDataToSend.append("Category1", selectedTopCategory!._id);
+        formDataToSend.append("Category2", subCategoryName);
+        formDataToSend.append("image", file);
+
+        // Optional debug
+        for (let [key, value] of formDataToSend.entries()) {
+            console.log(key, value);
+        }
+
+        await addSubCategory({ body: formDataToSend });
+
+        setSubCategoryName("");
+        setFileForType("sub", null);
+        subCategoriesRefetch();
     };
 
-    const handleDeleteTop = (cat: string) => {
-        setTopCategories((prev) => prev.filter((c) => c.name !== cat));
-        setSubCategories((prev) => {
-            const updated = { ...prev };
-            delete updated[cat];
-            return updated;
-        });
+    const handleAddSubSub = async () => {
+        // const file = selectedFiles["child"];
+        if (!subChildCategoryName) {
+            toast.error("Child Category Name is required");
+            return;
+        }
+
+        if (!selectedTopCategory) {
+            toast.error("Please Select Top category first")
+        }
+
+        if (!selectedSubCategory) {
+            toast.error("Please Select Sub category first")
+        }
+
+
+        await addSubChildCategory();
+
+        setSubChildCategoryName("");
+        subChildCategoriesRefetch();
     };
 
-    const handleEditSub = (oldCat: string, newCat: Category) => {
+    const handleEditTop = async () => {
+        const file = selectedFiles["top"];
+        if (!topCategoryName || !file) {
+            toast.error("Category Name and image are required");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("Category1", topCategoryName);
+        formData.append("image", file);
+
+        await editTopCategory({ body: formData });
+        setTopCategoryName("");
+        setFileForType("top", null);
+        refetch();
+    };
+
+    const handleEditSub = async () => {
+        const file = selectedFiles["sub"];
+        if (!subCategoryName || !file) {
+            toast.error("Sub Category Name and image are required");
+            return;
+        }
+
+        if (!selectedTopCategory) {
+            toast.error("Please Select Top category first")
+        }
+
+        const formDataToSend = new FormData();
+        formDataToSend.append("Category2", subCategoryName);
+        formDataToSend.append("image", file);
+
+        // Optional debug
+        for (let [key, value] of formDataToSend.entries()) {
+            console.log(key, value);
+        }
+
+        await editSubCategory({ body: formDataToSend });
+
+        setSubCategoryName("");
+        setFileForType("sub", null);
+        subCategoriesRefetch();
+    };
+
+    const handleEditSubSub = async () => {
+
+        if (!subChildCategoryName) {
+            toast.error("Child Category Name is required");
+            return;
+        }
+
+
+        await editSubChildCategory();
+        subChildCategoriesRefetch();
+    };
+
+    //========================== Delete top cat
+    const {
+        refetch: deleteTopCategory,
+    } = useAxios({
+        url: selectedTopCategory ? `${API_PATHS.DELETE_TOP}/${selectedTopCategory._id}` : "",
+        method: "delete",
+        manual: true,
+    });
+
+    const handleDeleteTop = async () => {
         if (!selectedTopCategory) return;
-        setSubCategories((prev) => {
-            const updated = { ...prev };
-            if (updated[selectedTopCategory]) {
-                updated[selectedTopCategory] = updated[selectedTopCategory].map((c) =>
-                    c.name === oldCat ? newCat : c
-                );
-            }
-            return updated;
-        });
+        await deleteTopCategory();
+        refetch();
+    }
 
-        setSubSubCategories((prev) => {
-            const updated = { ...prev };
-            if (updated[oldCat]) {
-                updated[newCat.name] = updated[oldCat];
-                delete updated[oldCat];
-            }
-            return updated;
-        });
-    };
 
-    const handleDeleteSub = (cat: string) => {
-        if (!selectedTopCategory) return;
-        setSubCategories((prev) => {
-            const updated = { ...prev };
-            updated[selectedTopCategory] = updated[selectedTopCategory].filter((c) => c.name !== cat);
-            return updated;
-        });
-        setSubSubCategories((prev) => {
-            const updated = { ...prev };
-            delete updated[cat];
-            return updated;
-        });
-    };
+    //==========================  Delete sub cat
+    const {
+        refetch: deleteSubCategory,
+    } = useAxios({
+        url: selectedSubCategory ? `${API_PATHS.DELETE_SUB}/${selectedSubCategory._id}` : "",
+        method: "delete",
+        manual: true,
+    });
 
-    const handleEditSubSub = (oldCat: string, newCat: Category) => {
+    const handleDeleteSub = async () => {
         if (!selectedSubCategory) return;
-        setSubSubCategories((prev) => {
-            const updated = { ...prev };
-            if (updated[selectedSubCategory]) {
-                updated[selectedSubCategory] = updated[selectedSubCategory].map((c) =>
-                    c.name === oldCat ? newCat : c
-                );
-            }
-            return updated;
-        });
+        await deleteSubCategory();
+        subCategoriesRefetch();
     };
 
-    const handleDeleteSubSub = (cat: string) => {
-        if (!selectedSubCategory) return;
-        setSubSubCategories((prev) => {
-            const updated = { ...prev };
-            updated[selectedSubCategory] = updated[selectedSubCategory].filter((c) => c.name !== cat);
-            return updated;
-        });
+    //==========================  Delete sub child cat
+    const {
+        refetch: deleteSubChildCategory,
+    } = useAxios({
+        url: selectedSubChildCategory ? `${API_PATHS.DELETE_SUB_CHILD}/${selectedSubChildCategory._id}` : "",
+        method: "delete",
+        manual: true,
+    });
+
+    const handleDeleteSubSub = async () => {
+        if (!selectedSubChildCategory) return;
+        await deleteSubChildCategory();
+        subChildCategoriesRefetch();
     };
-    // const [csvModalOpen, setCsvModalOpen] = useState(false);
+
+    const handleSelectTopCategory = useCallback((cat: { _id: string, Category: string }) => {
+        setSelectedTopCategory(cat);
+        setSelectedSubCategory(null);
+    }, []);
+
+
+    const handleSelectSubCategory = useCallback((cat: { _id: string, Category: string }) => {
+        setSelectedSubCategory(cat);
+        setSelectedSubChildCategory(null);
+    }, []);
+
+    const handleSelectSubChildCategory = useCallback((cat: { _id: string, Category: string }) => {
+        setSelectedSubChildCategory(cat);
+    }, []);
+
 
     return (
         <div className="space-y-4">
@@ -290,7 +657,6 @@ export default function ManageCategoriesPage() {
                             </svg>
                         </span>
                         <input
-
                             type="text"
                             placeholder="Search Category, sub category or child sub category..."
                             className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 xl:w-[430px]"
@@ -316,42 +682,52 @@ export default function ManageCategoriesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <CategoryColumn
                     title="Top Categories"
-                    categories={topCategories}
+                    categories={categories || []}
+                    categoryType="top"
                     onAdd={handleAddTop}
                     onEdit={handleEditTop}
                     onDelete={handleDeleteTop}
-                    onSelect={(cat) => {
-                        setSelectedTopCategory(cat);
-                        setSelectedSubCategory(null);
-                    }}
+                    onSelect={handleSelectTopCategory}
+                    selectedFile={getSelectedFile("top")}
+                    setSelectedFile={(file: any) => setFileForType("top", file)}
+                    categoryName={topCategoryName}
+                    setCategoryName={setTopCategoryName}
+                    top={top}
+                    setTop={setTop}
+                    onMark={markTop}
                 />
 
                 <CategoryColumn
-                    title="Subcategories"
-                    categories={
-                        selectedTopCategory
-                            ? subCategories[selectedTopCategory] || []
-                            : Object.values(subCategories).flat()
-                    }
-                    selectedParent={selectedTopCategory || undefined}
+                    title="Sub Categories"
+                    categories={subCategories || []}
+                    categoryType="sub"
                     onAdd={handleAddSub}
                     onEdit={handleEditSub}
                     onDelete={handleDeleteSub}
-                    onSelect={(cat) => setSelectedSubCategory(cat)}
+                    onSelect={handleSelectSubCategory}
+                    selectedFile={getSelectedFile("sub")}
+                    setSelectedFile={(file: any) => setFileForType("sub", file)}
+                    categoryName={subCategoryName}
+                    setCategoryName={setSubCategoryName}
+                    selectedParent={selectedTopCategory?.Category}
                 />
 
                 <CategoryColumn
-                    title="Sub-Subcategories"
-                    categories={
-                        selectedSubCategory
-                            ? subSubCategories[selectedSubCategory] || []
-                            : Object.values(subSubCategories).flat()
-                    }
-                    selectedParent={selectedSubCategory || undefined}
+                    title="Sub Child Categories"
+                    categories={subChildCategories || []}
+                    categoryType="child"
                     onAdd={handleAddSubSub}
                     onEdit={handleEditSubSub}
                     onDelete={handleDeleteSubSub}
+                    onSelect={handleSelectSubChildCategory}
+                    selectedFile={getSelectedFile("child")}
+                    setSelectedFile={(file: any) => setFileForType("child", file)}
+                    categoryName={subChildCategoryName}
+                    setCategoryName={setSubChildCategoryName}
+                    selectedParent={selectedSubCategory?.Category}
                 />
+
+
             </div>
         </div>
     );

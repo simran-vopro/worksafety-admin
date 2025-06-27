@@ -1,53 +1,83 @@
 import { useState } from "react";
 import { Frown, Pencil, X } from "lucide-react";
-import ImageDropzone from "../components/form/form-elements/ImageDropZone";
 import Button from "../components/ui/button/Button";
+import { useAxios } from "../hooks/useAxios";
+import { API_PATHS } from "../utils/config";
+import ConfirmModal from "../components/common/ConfirmModal";
+import { useBrandData } from "../hooks/useBrandData";
 
 interface Brand {
-    name: string;
+    _id: string;
+    Brand: string;
     image?: string;
 }
 
 export default function ManageBrandsPage() {
-    const [brands, setBrands] = useState<Brand[]>([{
-        name: "Portwest",
-        image: "./images/cards/card-01.jpg"
-    }]);
-    const [inputValue, setInputValue] = useState("");
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const [brand, setBrand] = useState("");
+
     const [editIndex, setEditIndex] = useState<number | null>(null);
-    const [editingOldName, setEditingOldName] = useState<string | null>(null);
+    // const [editingOldName, setEditingOldName] = useState<string | null>(null);
+
+
+    const [deleteBrand, setDeleteBrand] = useState<Brand | null>(null);
 
     const isEditing = editIndex !== null;
 
-    const handleAddOrEdit = () => {
-        if (!inputValue.trim()) return;
-        if (!imagePreview && !isEditing) return;
 
-        const brand: Brand = {
-            name: inputValue.trim(),
-            image: imagePreview || undefined,
-        };
+    // //get all brands
+    // const {
+    //     data: brands,
+    //     refetch: getBrands,
+    // } = useAxios<Brand[]>({
+    //     url: `${API_PATHS.BRANDS}`,
+    //     method: "get",
+    // });
 
-        if (isEditing && editingOldName) {
-            setBrands((prev) =>
-                prev.map((b) => (b.name === editingOldName ? brand : b))
-            );
-        } else {
-            if (!brands.find((b) => b.name === brand.name)) {
-                setBrands([...brands, brand]);
-            }
-        }
 
+    const { brands, getBrands } = useBrandData();
+
+
+    // Add Agent
+    const {
+        refetch: addBrand,
+    } = useAxios({
+        url: API_PATHS.ADD_BRAND,
+        method: "post",
+        body: { Brand: brand },
+        manual: true,
+    });
+
+    const handleAddOrEdit = async () => {
+        if (!brand.trim()) return;
+
+        await addBrand();
+        getBrands();
         // Reset state
-        setInputValue("");
-        setImagePreview(null);
+        setBrand("");
         setEditIndex(null);
-        setEditingOldName(null);
+        // setEditingOldName(null);
     };
 
-    const handleDelete = (name: string) => {
-        setBrands((prev) => prev.filter((b) => b.name !== name));
+
+    // Delete Agent
+    const {
+        refetch: deleteBrandRequest,
+    } = useAxios({
+        url: deleteBrand ? `${API_PATHS.DELETE_BRAND}/${deleteBrand._id}` : "",
+        method: "delete",
+        manual: true,
+    });
+
+
+    const handleDelete = async () => {
+        try {
+            await deleteBrandRequest();
+            setDeleteBrand(null);
+            getBrands();
+        } catch (err) {
+            alert("Failed to delete brann");
+        }
     };
 
     // const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -90,10 +120,10 @@ export default function ManageBrandsPage() {
                         </button>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" 
-                
+                <Button variant="outline" size="sm"
+
                 // onClick={() => setCsvModalOpen(true)}
-                
+
                 >
                     Upload CSV
                 </Button>
@@ -108,12 +138,12 @@ export default function ManageBrandsPage() {
                         type="text"
                         placeholder="Enter brand name"
                         className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 mb-4"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        value={brand}
+                        onChange={(e) => setBrand(e.target.value)}
                     />
-                    <ImageDropzone
+                    {/* <ImageDropzone
                         onImageSelect={(img) => setImagePreview(img)}
-                    />
+                    /> */}
                     <Button className="w-full mt-4" onClick={handleAddOrEdit}>
                         {isEditing ? "Update Brand" : "Add Brand"}
                     </Button>
@@ -123,19 +153,25 @@ export default function ManageBrandsPage() {
                 <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
                     <h2 className="text-lg font-semibold mb-4">Brand List</h2>
                     <div className="space-y-3">
-                        {brands.length > 0 ? brands.map((brand, i) => (
+                        {brands && brands?.length > 0 ? brands.map((brand, i) => (
                             <div
                                 key={i}
                                 className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition"
                             >
                                 <div className="flex items-center gap-3 flex-1">
-                                    <img
-                                        src={brand.image || "./images/cards/card-01.jpg"}
+                                    {brand.image ? <img
+                                        src={brand.image}
                                         alt="Brand"
                                         className="rounded-full w-10 h-10 object-cover"
-                                    />
+                                    /> :
+
+                                        <div className="rounded-full w-10 h-10 object-cover text-xl bg-blue-200 font-bold flex justify-center items-center">
+                                            {brand.Brand[0]}
+                                        </div>
+                                    }
+
                                     <span className="font-medium text-gray-800 dark:text-white">
-                                        {brand.name}
+                                        {brand.Brand}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 ml-2">
@@ -144,15 +180,15 @@ export default function ManageBrandsPage() {
                                         className="text-gray-500 hover:text-blue-600 cursor-pointer"
                                         onClick={() => {
                                             setEditIndex(i);
-                                            setInputValue(brand.name);
-                                            setImagePreview(brand.image || null);
-                                            setEditingOldName(brand.name);
+                                            setBrand(brand.Brand);
+                                            // setImagePreview(brand.image || null);
+                                            // setEditingOldName(brand.Brand);
                                         }}
                                     />
                                     <X
                                         size={16}
                                         className="text-red-500 hover:text-red-700 cursor-pointer"
-                                        onClick={() => handleDelete(brand.name)}
+                                        onClick={() => setDeleteBrand(brand)}
                                     />
                                 </div>
                             </div>
@@ -168,6 +204,15 @@ export default function ManageBrandsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Confirm Delete Modal */}
+            <ConfirmModal
+                open={!!deleteBrand}
+                onClose={() => setDeleteBrand(null)}
+                onConfirm={handleDelete}
+                title="Confirm Delete Agent"
+                description={`Are you sure you want to delete agent ${deleteBrand?.Brand}?`}
+            />
         </div>
     );
 }
