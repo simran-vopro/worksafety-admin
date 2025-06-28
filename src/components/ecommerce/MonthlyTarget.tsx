@@ -1,14 +1,64 @@
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
+import { API_PATHS } from "../../utils/config";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function TotalOrders() {
-  const series = [75.55]; // You can modify this to match your order data.
-  const options: ApexOptions = {
-    colors: ["#465FFF"],
+  const [isOpen, setIsOpen] = useState(false);
+  const [barColor, setBarColor] = useState("#465FFF");
+
+  function toggleDropdown() {
+    setIsOpen(!isOpen);
+  }
+
+  function closeDropdown() {
+    setIsOpen(false);
+  }
+
+  const { adminToken } = useAuth();
+
+  const [series, setSeries] = useState<number[]>([0]); // default chart %
+
+  const [orderData, setOrderData] = useState({
+    currentMonthOrders: 0,
+    previousMonthOrders: 0,
+    todayOrders: 0,
+    completedOrders: 0,
+    percentageChange: 0,
+    totalOrders: 0,
+    allCompletedOrders: 0,
+    allPendingOrders: 0,
+  });
+
+  useEffect(() => {
+    if (!adminToken) return;
+
+    fetch(API_PATHS.COMPARE_ORDERS, {
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setOrderData(data);
+        setSeries([parseFloat(data.percentageChange)]);
+        setBarColor(
+          data.currentMonthOrders >= data.previousMonthOrders
+            ? "#465FFF"
+            : "#EF4444"
+        );
+      })
+      .catch((err) => {
+        console.error("Error fetching order stats:", err);
+      });
+  }, [adminToken]);
+
+  const options: ApexOptions = useMemo(() => ({
+    colors: [barColor],
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "radialBar",
@@ -47,22 +97,13 @@ export default function TotalOrders() {
     },
     fill: {
       type: "solid",
-      colors: ["#465FFF"],
+      colors: [barColor],
     },
     stroke: {
       lineCap: "round",
     },
     labels: ["Orders Progress"],
-  };
-  const [isOpen, setIsOpen] = useState(false);
-
-  function toggleDropdown() {
-    setIsOpen(!isOpen);
-  }
-
-  function closeDropdown() {
-    setIsOpen(false);
-  }
+  }), [barColor]);
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -70,10 +111,20 @@ export default function TotalOrders() {
         <div className="flex justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              Total Orders
+              {`Current Month Orders – ${new Date().toLocaleString("default", {
+                month: "long",
+              })}`}
             </h3>
             <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-              Total number of orders placed
+              Previous Month (
+              {new Date(
+                new Date().setMonth(new Date().getMonth() - 1)
+              ).toLocaleString("default", { month: "long" })}
+              ): {orderData.previousMonthOrders} orders
+            </p>
+            <p className="text-gray-500 text-theme-xs dark:text-gray-400">
+              Today: {orderData.todayOrders} orders • Completed:{" "}
+              {orderData.completedOrders} orders
             </p>
           </div>
           <div className="relative inline-block">
@@ -110,22 +161,33 @@ export default function TotalOrders() {
             />
           </div>
 
-          <span className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-[95%] rounded-full bg-success-50 px-3 py-1 text-xs font-medium text-success-600 dark:bg-success-500/15 dark:text-success-500">
-            +10%
+          <span
+            className={`absolute left-1/2 top-full -translate-x-1/2 -translate-y-[95%] rounded-full px-3 py-1 text-xs font-medium 
+  ${
+    orderData.percentageChange >= 0
+      ? "bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500"
+      : "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-500"
+  }
+`}
+          >
+            {orderData.percentageChange >= 0 ? "+" : ""}
+            {orderData.percentageChange}%
           </span>
         </div>
         <p className="mx-auto mt-10 w-full max-w-[380px] text-center text-sm text-gray-500 sm:text-base">
-          You have processed 1,287 orders today, which is 10% more than last month. Impressive sales growth!
+          {orderData.percentageChange >= 0
+            ? `You have processed ${orderData.todayOrders} orders today, which is ${orderData.percentageChange}% more than last month. Impressive sales growth!`
+            : `You have processed ${orderData.todayOrders} orders today, which is ${Math.abs(orderData.percentageChange)}% fewer than last month. Let's improve next time!`}
         </p>
       </div>
 
       <div className="flex items-center justify-center gap-5 px-6 py-3.5 sm:gap-8 sm:py-5">
         <div>
           <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Total Orders
+            Total Orders (All Time)
           </p>
           <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            12,345 Orders
+            {orderData.totalOrders} Orders
             <svg
               width="16"
               height="16"
@@ -147,10 +209,10 @@ export default function TotalOrders() {
 
         <div>
           <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Completed Orders
+            Completed Orders(All Time)
           </p>
           <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            10,000 Orders
+            {orderData.allCompletedOrders} Orders
             <svg
               width="16"
               height="16"
@@ -172,10 +234,10 @@ export default function TotalOrders() {
 
         <div>
           <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Orders Today
+            Pending Orders (All Time)
           </p>
           <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            500 Orders
+            {orderData.allPendingOrders} Orders
             <svg
               width="16"
               height="16"

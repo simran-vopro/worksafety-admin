@@ -41,6 +41,12 @@ export default function SignInForm() {
         type: activeTab,
       });
 
+      console.log("Login response:", res);
+
+      // // Check if response is valid
+      // if (!res.data || !res.data.data || !res.data.data.token || !res.data.data.user) {
+      //   throw new Error("Invalid login response");
+      // }
       const { token, user } = res.data.data;
 
       // ✅ Update Redux state

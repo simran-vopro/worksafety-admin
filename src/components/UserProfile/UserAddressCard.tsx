@@ -4,6 +4,11 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { useAuth } from "../../hooks/useAuth";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { useAxios } from "../../hooks/useAxios";
+import { User } from "../../types/auth";
+import { API_PATHS } from "../../utils/config";
 
 export default function UserAddressCard() {
   const { isOpen, openModal, closeModal } = useModal();
@@ -14,6 +19,49 @@ export default function UserAddressCard() {
   };
 
   const { adminUser } = useAuth();
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const {
+    // data: passwordData,
+    refetch: updatePassword,
+  } = useAxios<User>({
+    method: "put",
+    url: `${API_PATHS.CHANGE_PASSWORD}`,
+    body: {
+      currentPassword,
+      newPassword,
+    }, // no need to wrap in `{ formData }`
+    manual: true,
+  });
+
+  const handleUpdatePasswordSubmit = async(e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("All fields are required.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("New password and confirm password do not match.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+
+    await updatePassword(); // Calls your useAxios hook
+    closeModal();
+  };
+
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   return (
     <>
@@ -82,7 +130,7 @@ export default function UserAddressCard() {
                 fill=""
               />
             </svg>
-            Edit
+            Change Password
           </button>
         </div>
       </div>
@@ -90,43 +138,82 @@ export default function UserAddressCard() {
         <div className="relative w-full p-4 overflow-y-auto bg-white no-scrollbar rounded-3xl dark:bg-gray-900 lg:p-11">
           <div className="px-2 pr-14">
             <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-              Edit Address
+              Change Password
             </h4>
             <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-              Update your details to keep your profile up-to-date.
+              Use a strong password with at least 8 characters.
             </p>
           </div>
-          <form className="flex flex-col">
+          <form onSubmit={handleUpdatePasswordSubmit} className="flex flex-col">
             <div className="px-2 overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-5">
                 <div>
-                  <Label>Country</Label>
-                  <Input type="text" value="United States" />
+                  <Label>Current Password</Label>
+                  <Input
+                    type={showCurrent ? "text" : "password"}
+                    name="currentPassword"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    // endIcon={
+                    //   <button
+                    //     type="button"
+                    //     onClick={() => setShowCurrent(!showCurrent)}
+                    //   >
+                    //     {showCurrent ? "🙈" : "👁️"}
+                    //   </button>
+                    // }
+                  />
                 </div>
 
                 <div>
-                  <Label>City/State</Label>
-                  <Input type="text" value="Arizona, United States." />
+                  <Label>New Password</Label>
+                  <Input
+                    type={showNew ? "text" : "password"}
+                    name="newPassword"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    // endIcon={
+                    //   <button
+                    //     type="button"
+                    //     onClick={() => setShowNew(!showNew)}
+                    //   >
+                    //     {showNew ? "🙈" : "👁️"}
+                    //   </button>
+                    // }
+                  />
                 </div>
 
                 <div>
-                  <Label>Postal Code</Label>
-                  <Input type="text" value="ERT 2489" />
-                </div>
-
-                <div>
-                  <Label>TAX ID</Label>
-                  <Input type="text" value="AS4568384" />
+                  <Label>Confirm New Password</Label>
+                  <Input
+                    type={showConfirm ? "text" : "password"}
+                    name="confirmPassword"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    // endIcon={
+                    //   <button
+                    //     type="button"
+                    //     onClick={() => setShowConfirm(!showConfirm)}
+                    //   >
+                    //     {showConfirm ? "🙈" : "👁️"}
+                    //   </button>
+                    // }
+                  />
                 </div>
               </div>
             </div>
+
             <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
-              </Button>
+              <button
+                type="submit"
+                className="bg-pink-600 text-white px-6 py-2 rounded hover:bg-pink-700 transition"
+              >
+                Update Password
+              </button>
+              
             </div>
           </form>
         </div>

@@ -206,6 +206,7 @@ export default function QuotationDetailsPage() {
                             ["City", order.city],
                             ["Postcode", order.postcode],
                             ["Status", order.status],
+                            ["Message", order.message],
                         ].map(([label, value], i) => (
                             <tr key={i} className="border-b dark:border-gray-700">
                                 <th className="p-2 font-medium bg-gray-50 dark:bg-gray-800 w-48">{label}</th>

@@ -26,7 +26,6 @@ export default function Home() {
           <StatisticsChart />
         </div>
 
-
         <div className="col-span-12">
           <RecentOrders />
         </div>
